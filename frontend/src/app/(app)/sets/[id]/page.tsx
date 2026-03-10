@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import { Upload, Trash2, Settings, Play, Plus, X, Pencil, Check } from 'lucide-react'
+import { Upload, Trash2, Settings, Play, Plus, X, Pencil, Check, Heart, ImageDown } from 'lucide-react'
 
 interface OverlayCorner {
   x: number
@@ -25,6 +25,7 @@ interface Template {
   originalImagePath: string
   overlayConfig: TemplateOverlayConfig | null
   sortOrder: number
+  isFavorite?: boolean
 }
 
 interface ColorVariant {
@@ -40,7 +41,7 @@ interface MockupSet {
   colorVariants?: ColorVariant[]
 }
 
-function TemplateCard({ template: t, setId, onDelete }: { template: Template; setId: string; onDelete: () => void }) {
+function TemplateCard({ template: t, setId, onDelete, onToggleFavorite }: { template: Template; setId: string; onDelete: () => void; onToggleFavorite: () => void }) {
   const imgRef = useRef<HTMLImageElement>(null)
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null)
 
@@ -93,6 +94,14 @@ function TemplateCard({ template: t, setId, onDelete }: { template: Template; se
         </div>
       </div>
       <div className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex gap-1">
+        <button onClick={onToggleFavorite}
+          className="rounded-full bg-white p-2 shadow hover:bg-pink-50">
+          <Heart size={14} className={t.isFavorite ? 'fill-pink-500 text-pink-500' : 'text-gray-400'} />
+        </button>
+        <Link href={`/sets/${setId}/templates/${t.id}/renders`}
+          className="rounded-full bg-white p-2 shadow hover:bg-gray-100" title="View renders">
+          <ImageDown size={14} />
+        </Link>
         <Link href={`/sets/${setId}/templates/${t.id}/edit`}
           className="rounded-full bg-white p-2 shadow hover:bg-gray-100">
           <Settings size={14} />
@@ -219,6 +228,11 @@ export default function SetDetailPage() {
     api.getSet(id).then(setSet)
   }
 
+  const handleToggleFavorite = async (templateId: string, current: boolean) => {
+    await api.toggleTemplateFavorite(id, templateId, !current)
+    api.getSet(id).then(setSet)
+  }
+
   const handleDeleteTemplate = async (templateId: string) => {
     if (!confirm('Delete this template?')) return
     await api.deleteTemplate(id, templateId)
@@ -303,7 +317,8 @@ export default function SetDetailPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {set.templates.map((t) => (
             <TemplateCard key={t.id} template={t} setId={id}
-              onDelete={() => handleDeleteTemplate(t.id)} />
+              onDelete={() => handleDeleteTemplate(t.id)}
+              onToggleFavorite={() => handleToggleFavorite(t.id, !!t.isFavorite)} />
           ))}
         </div>
       )}

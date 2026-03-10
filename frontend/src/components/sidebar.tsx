@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { LayoutDashboard, Layers, Palette, ImageDown, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Layers, Palette, ImageDown, Heart, LogOut, Menu, X } from 'lucide-react'
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/sets', label: 'My Sets', icon: Layers },
   { href: '/designs', label: 'My Designs', icon: Palette },
   { href: '/renders', label: 'Renders', icon: ImageDown },
+  { href: '/favourites', label: 'Favourites', icon: Heart },
 ]
 
 export function Sidebar() {

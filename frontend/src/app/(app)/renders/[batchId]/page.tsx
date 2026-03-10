@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import { Loader2, Download, X, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react'
+import { Loader2, Download, X, ChevronLeft, ChevronRight, ArrowLeft, Heart } from 'lucide-react'
 
 interface OverlaySettings {
   displacementIntensity?: number
@@ -13,6 +13,7 @@ interface OverlaySettings {
 interface Render {
   id: string
   status: string
+  isFavorite?: boolean
   mockupTemplate: { name: string; overlayConfig?: OverlaySettings | null }
 }
 
@@ -37,6 +38,11 @@ export default function BatchDetailPage() {
   useEffect(() => {
     api.getBatch(batchId).then((b) => { setBatch(b); setDescValue(b.description ?? '') }).catch(() => router.push('/renders')).finally(() => setLoading(false))
   }, [batchId, router])
+
+  const toggleRenderFav = async (renderId: string) => {
+    await api.toggleRenderFavorite(renderId)
+    api.getBatch(batchId).then((b) => { setBatch(b); setDescValue(b.description ?? '') })
+  }
 
   const completedRenders = batch?.renders.filter((r) => r.status === 'complete') ?? []
 
@@ -167,6 +173,10 @@ export default function BatchDetailPage() {
                     )}
                   </div>
                 </div>
+                <button onClick={() => toggleRenderFav(r.id)}
+                  className="shrink-0 p-1.5 rounded-full hover:bg-pink-50">
+                  <Heart size={14} className={r.isFavorite ? 'fill-pink-500 text-pink-500' : 'text-gray-400'} />
+                </button>
                 {r.status === 'complete' && (
                   <a href={api.getDownloadUrl(r.id)} download
                     className="shrink-0 ml-2 p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"

@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import { Upload, Download, Loader2, Image as ImageIcon, X, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { Upload, Download, Loader2, Image as ImageIcon, X, ChevronLeft, ChevronRight, Clock, Heart } from 'lucide-react'
 
 interface Design {
   id: string
@@ -19,6 +19,7 @@ interface OverlaySettings {
 interface RenderStatus {
   id: string
   status: string
+  isFavorite?: boolean
   mockupTemplate: { name: string; overlayConfig?: OverlaySettings | null }
   renderedImagePath: string
   renderOptions?: { tintColor?: string; outputMode?: string; outputColor?: string }
@@ -128,6 +129,14 @@ export default function ApplyDesignPage() {
       if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [])
+
+  const toggleRenderFav = async (renderId: string) => {
+    await api.toggleRenderFavorite(renderId)
+    if (batchId) {
+      const updated = await api.getBatch(batchId)
+      setRenders(updated.renders)
+    }
+  }
 
   const completedRenders = renders.filter((r) => r.status === 'complete')
 
@@ -358,6 +367,10 @@ export default function ApplyDesignPage() {
                         )}
                       </div>
                     </div>
+                    <button onClick={() => toggleRenderFav(r.id)}
+                      className="shrink-0 p-1.5 rounded-full hover:bg-pink-50">
+                      <Heart size={14} className={r.isFavorite ? 'fill-pink-500 text-pink-500' : 'text-gray-400'} />
+                    </button>
                     {r.status === 'complete' && (
                       <a href={api.getDownloadUrl(r.id)} download
                         className="shrink-0 ml-2 p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
