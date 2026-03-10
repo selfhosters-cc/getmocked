@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import numpy as np
 from PIL import Image
@@ -120,6 +122,10 @@ def apply_perspective_transform(
     curvature: float = 0.0,
     curve_axis: str = "auto",
     texture_data: dict | None = None,
+    tint_color: str | None = None,
+    mask_path: str | None = None,
+    output_mode: str = "original",
+    output_color: str | None = None,
 ) -> Image.Image:
     """Apply a design onto a template image using perspective warp."""
     if not corners or len(corners) != 4:
@@ -127,6 +133,18 @@ def apply_perspective_transform(
         return template.convert("RGB")
 
     template_cv = np.array(template.convert("RGB"))
+
+    # Apply tint if requested
+    if tint_color:
+        from app.mask import detect_product_mask
+        from app.tint import tint_product
+        if mask_path and os.path.exists(mask_path):
+            product_mask = Image.open(mask_path).convert("L")
+        else:
+            product_mask = detect_product_mask(template)
+        tinted = tint_product(template.convert("RGB"), product_mask, tint_color)
+        template_cv = np.array(tinted)
+        template = tinted
 
     # Ensure design has alpha channel, preserving native transparency
     design_cv = _prepare_design_alpha(design)
@@ -172,7 +190,35 @@ def apply_perspective_transform(
     blend = 0.05 + displacement_intensity * 0.55  # range: 0.05 to 0.60
     result = _composite(template_cv, warped, blend_strength=blend)
 
-    return Image.fromarray(result)
+    result = Image.fromarray(result)
+
+    # Apply output mode
+    if output_mode == "transparent":
+        from app.mask import detect_product_mask
+        if mask_path and os.path.exists(mask_path):
+            product_mask = Image.open(mask_path).convert("L")
+        else:
+            product_mask = detect_product_mask(template)
+        mask_arr = np.array(product_mask)
+        rgba = np.array(result.convert("RGBA"))
+        rgba[:, :, 3] = mask_arr
+        result = Image.fromarray(rgba)
+    elif output_mode == "solid" and output_color:
+        from app.mask import detect_product_mask
+        from app.tint import hex_to_rgb
+        if mask_path and os.path.exists(mask_path):
+            product_mask = Image.open(mask_path).convert("L")
+        else:
+            product_mask = detect_product_mask(template)
+        mask_arr = np.array(product_mask).astype(np.float32) / 255.0
+        bg_r, bg_g, bg_b = hex_to_rgb(output_color)
+        result_arr = np.array(result.convert("RGB")).astype(np.float32)
+        bg = np.full_like(result_arr, [bg_r, bg_g, bg_b], dtype=np.float32)
+        mask_3ch = mask_arr[:, :, np.newaxis]
+        blended = result_arr * mask_3ch + bg * (1.0 - mask_3ch)
+        result = Image.fromarray(blended.clip(0, 255).astype(np.uint8))
+
+    return result
 
 
 def _fit_design_to_quad(design: np.ndarray, dst_pts: np.ndarray) -> np.ndarray:
