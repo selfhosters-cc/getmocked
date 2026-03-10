@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import { Upload, Trash2, Settings, Play, Plus, X } from 'lucide-react'
+import { Upload, Trash2, Settings, Play, Plus, X, Pencil, Check } from 'lucide-react'
 
 interface OverlayCorner {
   x: number
@@ -161,6 +161,50 @@ export default function SetDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [set, setSet] = useState<MockupSet | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+  const [descValue, setDescValue] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const descInputRef = useRef<HTMLInputElement>(null)
+
+  const startEditingName = () => {
+    if (!set) return
+    setNameValue(set.name)
+    setEditingName(true)
+    setTimeout(() => nameInputRef.current?.focus(), 0)
+  }
+
+  const saveName = async () => {
+    if (!set) return
+    const trimmed = nameValue.trim()
+    if (!trimmed || trimmed === set.name) {
+      setEditingName(false)
+      return
+    }
+    await api.updateSet(id, { name: trimmed })
+    setSet({ ...set, name: trimmed })
+    setEditingName(false)
+  }
+
+  const startEditingDesc = () => {
+    if (!set) return
+    setDescValue(set.description ?? '')
+    setEditingDesc(true)
+    setTimeout(() => descInputRef.current?.focus(), 0)
+  }
+
+  const saveDesc = async () => {
+    if (!set) return
+    const trimmed = descValue.trim()
+    if (trimmed === (set.description ?? '')) {
+      setEditingDesc(false)
+      return
+    }
+    await api.updateSet(id, { description: trimmed })
+    setSet({ ...set, description: trimmed || undefined })
+    setEditingDesc(false)
+  }
 
   useEffect(() => {
     api.getSet(id).then(setSet)
@@ -187,8 +231,55 @@ export default function SetDetailPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold">{set.name}</h1>
-          {set.description && <p className="text-gray-500">{set.description}</p>}
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                ref={nameInputRef}
+                type="text"
+                value={nameValue}
+                onChange={(e) => setNameValue(e.target.value)}
+                onBlur={saveName}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveName()
+                  if (e.key === 'Escape') setEditingName(false)
+                }}
+                className="text-2xl font-bold bg-transparent border-b-2 border-blue-500 outline-none py-0 px-1 -ml-1"
+              />
+              <button onClick={saveName} className="text-green-600 hover:text-green-700">
+                <Check size={18} />
+              </button>
+            </div>
+          ) : (
+            <h1
+              className="text-2xl font-bold group/name cursor-pointer inline-flex items-center gap-2"
+              onClick={startEditingName}
+            >
+              {set.name}
+              <Pencil size={14} className="text-gray-400 opacity-0 group-hover/name:opacity-100 transition-opacity" />
+            </h1>
+          )}
+          {editingDesc ? (
+            <input
+              ref={descInputRef}
+              type="text"
+              value={descValue}
+              onChange={(e) => setDescValue(e.target.value)}
+              onBlur={saveDesc}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveDesc()
+                if (e.key === 'Escape') setEditingDesc(false)
+              }}
+              className="text-gray-500 bg-transparent border-b-2 border-blue-500 outline-none py-0 px-1 -ml-1 w-full mt-1"
+              placeholder="Add a description..."
+            />
+          ) : (
+            <p
+              className="text-gray-500 cursor-pointer mt-1 hover:text-gray-700 transition-colors"
+              onClick={startEditingDesc}
+            >
+              {set.description || <span className="italic text-gray-400">Add a description...</span>}
+            </p>
+          )}
         </div>
         <div className="flex gap-2 shrink-0">
           <Link href={`/sets/${id}/apply`}
