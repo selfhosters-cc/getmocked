@@ -26,7 +26,8 @@ model MockupSet {
   userId      String           @map("user_id")
   name        String
   description String?
-  createdAt   DateTime         @default(now()) @map("created_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  colorVariants Json?            @default("[]") @map("color_variants")
   user          User             @relation(fields: [userId], references: [id])
   templates     MockupTemplate[]
   renderBatches RenderBatch[]
@@ -81,6 +82,7 @@ model RenderedMockup {
   batchId           String?        @map("batch_id")
   renderedImagePath String         @map("rendered_image_path")
   status            String         @default("pending")
+  renderOptions     Json?          @map("render_options")
   createdAt         DateTime       @default(now()) @map("created_at")
   mockupTemplate    MockupTemplate @relation(fields: [mockupTemplateId], references: [id], onDelete: Cascade)
   design            Design         @relation(fields: [designId], references: [id])
