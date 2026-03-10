@@ -40,6 +40,7 @@ router.post('/signup', async (req: Request, res: Response) => {
       res.status(400).json({ error: err.errors })
       return
     }
+    console.error('Auth error:', err)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -68,6 +69,7 @@ router.post('/login', async (req: Request, res: Response) => {
       res.status(400).json({ error: err.errors })
       return
     }
+    console.error('Auth error:', err)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
