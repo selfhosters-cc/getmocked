@@ -1,19 +1,18 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next'
+import { AuthProvider } from '@/lib/auth-context'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: "Get Mocked",
-  description: "Mockup generator for Etsy POD sellers",
-};
+  title: 'Get Mocked',
+  description: 'Mockup generator for Etsy POD sellers',
+}
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 text-gray-900">{children}</body>
+      <body className="bg-gray-50 text-gray-900">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
-  );
+  )
 }
