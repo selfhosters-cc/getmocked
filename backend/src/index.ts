@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
+import path from 'path'
 import authRouter from './routes/auth.js'
 import mockupSetsRouter from './routes/mockup-sets.js'
 import templatesRouter from './routes/templates.js'
@@ -16,6 +17,12 @@ app.use(express.json())
 app.use(cookieParser())
 
 app.use(passport.initialize())
+
+const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads'
+const RENDER_DIR = process.env.RENDER_DIR || './rendered'
+
+app.use('/uploads', express.static(UPLOAD_DIR))
+app.use('/rendered', express.static(RENDER_DIR))
 
 app.use('/api/auth', authRouter)
 app.use('/api/mockup-sets', mockupSetsRouter)
