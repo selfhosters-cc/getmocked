@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import authRouter from './routes/auth.js'
+import mockupSetsRouter from './routes/mockup-sets.js'
 import passport from './lib/passport.js'
 
 const app = express()
@@ -14,6 +15,7 @@ app.use(cookieParser())
 app.use(passport.initialize())
 
 app.use('/api/auth', authRouter)
+app.use('/api/mockup-sets', mockupSetsRouter)
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
