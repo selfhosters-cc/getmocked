@@ -9,6 +9,8 @@ const overlayConfigSchema = z.object({
   displacementIntensity: z.number().min(0).max(1).default(0.5),
   transparency: z.number().min(0).max(1).default(0),
   textureData: z.any().optional(),
+  curvature: z.number().min(-1).max(1).optional(),
+  curveAxis: z.enum(['auto', 'horizontal', 'vertical']).optional(),
   mode: z.enum(['advanced', 'basic']).default('advanced'),
   rotation: z.number().optional(),
   width: z.number().optional(),
@@ -36,6 +38,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.overlayConfig) {
       data.overlayConfig = overlayConfigSchema.parse(body.overlayConfig)
     }
+    if (body.isFavorite !== undefined) data.isFavorite = !!body.isFavorite
 
     const result = await prisma.mockupTemplate.updateMany({
       where: { id: templateId, mockupSetId: set.id },
