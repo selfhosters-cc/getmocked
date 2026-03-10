@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { api } from '@/lib/api'
 import { Upload, Download, Loader2, Image as ImageIcon, X, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 
@@ -152,7 +153,15 @@ export default function ApplyDesignPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Apply Design</h1>
+      <nav className="flex items-center text-sm text-gray-400 mb-2">
+        <Link href="/sets" className="hover:text-white transition-colors">My Sets</Link>
+        <ChevronRight className="w-4 h-4 mx-1" />
+        <Link href={`/sets/${setId}`} className="hover:text-white transition-colors">{set?.name || 'Set'}</Link>
+        <ChevronRight className="w-4 h-4 mx-1" />
+        <span className="text-gray-300">Apply Design</span>
+      </nav>
+      <h1 className="text-2xl font-bold mb-1">Apply Design to {set?.name || 'Set'}</h1>
+      <p className="text-sm text-gray-400 mb-6">{set?.templates?.length || 0} template{set?.templates?.length === 1 ? '' : 's'} in this set</p>
 
       {/* Step 1: Select design */}
       <div className="mb-6">
