@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/greg/.claude/plugins/cache/superpowers-dev/superpowers/4.3.0/skills/subagent-driven-development/**)",
+      "Bash(git commit:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npm install:*)",
+      "Bash(ls /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/)",
+      "Bash(mkdir -p /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/sets/[id]/templates/[templateId]/edit)",
+      "Bash(mkdir -p /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/sets/[id]/apply)",
+      "Bash(git add:*)"
+    ]
+  }
+}
