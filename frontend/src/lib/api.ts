@@ -80,6 +80,15 @@ export const api = {
   updateSetColors: (id: string, colorVariants: Array<{ name: string; hex: string }>) =>
     request(`/api/mockup-sets/${id}`, { method: 'PATCH', body: JSON.stringify({ colorVariants }) }),
 
+  // Mask Detection
+  detectMask: (setId: string, templateId: string) =>
+    request(`/api/mockup-sets/${setId}/templates/${templateId}/mask`, { method: 'POST' }),
+  refineMask: (setId: string, templateId: string, maskPath: string, strokes: unknown[]) =>
+    request(`/api/mockup-sets/${setId}/templates/${templateId}/mask`, {
+      method: 'PATCH',
+      body: JSON.stringify({ maskPath, strokes }),
+    }),
+
   // Dashboard
   getDashboard: () => request('/api/dashboard'),
 }
