@@ -33,6 +33,7 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
   const [brushSize, setBrushSize] = useState(20)
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
+  const [maskLoaded, setMaskLoaded] = useState(0)
 
   const isDrawingRef = useRef(false)
   const currentStrokeRef = useRef<StrokePoint[]>([])
@@ -104,22 +105,22 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
       }
       ctx.restore()
     }
-  }, [canvasSize, strokes])
+  }, [canvasSize, strokes, maskLoaded])
 
   useEffect(() => {
     drawMaskOverlay()
   }, [drawMaskOverlay])
 
-  const loadMask = useCallback((path: string) => {
+  const loadMask = useCallback((maskRelPath: string) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
       maskImageRef.current = img
-      drawMaskOverlay()
+      setMaskLoaded((n) => n + 1)
     }
     // Add cache buster to reload after refinement
-    img.src = `/uploads/${path}?t=${Date.now()}`
-  }, [drawMaskOverlay])
+    img.src = `/uploads/${maskRelPath}?t=${Date.now()}`
+  }, [])
 
   const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement>): StrokePoint => {
     const canvas = overlayCanvasRef.current!
