@@ -3,9 +3,15 @@ import { z } from 'zod'
 import { prisma } from '@/lib/server/prisma'
 import { requireAuth, handleAuthError } from '@/lib/server/auth'
 
+const colorVariantSchema = z.object({
+  name: z.string().min(1),
+  hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+})
+
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
+  colorVariants: z.array(colorVariantSchema).optional(),
 })
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

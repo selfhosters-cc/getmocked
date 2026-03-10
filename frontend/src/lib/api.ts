@@ -76,6 +76,10 @@ export const api = {
   getBatch: (batchId: string) => request(`/api/render/batches/${batchId}`),
   deleteBatch: (batchId: string) => request(`/api/render/batches/${batchId}`, { method: 'DELETE' }),
 
+  // Color Variants
+  updateSetColors: (id: string, colorVariants: Array<{ name: string; hex: string }>) =>
+    request(`/api/mockup-sets/${id}`, { method: 'PATCH', body: JSON.stringify({ colorVariants }) }),
+
   // Dashboard
   getDashboard: () => request('/api/dashboard'),
 }
