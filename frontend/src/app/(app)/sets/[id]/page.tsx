@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import { Upload, Trash2, Settings, Play } from 'lucide-react'
+import { Upload, Trash2, Settings, Play, Plus, X } from 'lucide-react'
 
 interface OverlayCorner {
   x: number
@@ -27,11 +27,17 @@ interface Template {
   sortOrder: number
 }
 
+interface ColorVariant {
+  name: string
+  hex: string
+}
+
 interface MockupSet {
   id: string
   name: string
   description?: string
   templates: Template[]
+  colorVariants?: ColorVariant[]
 }
 
 function TemplateCard({ template: t, setId, onDelete }: { template: Template; setId: string; onDelete: () => void }) {
@@ -100,6 +106,57 @@ function TemplateCard({ template: t, setId, onDelete }: { template: Template; se
   )
 }
 
+function ColorVariantManager({ setId, variants, onUpdate }: { setId: string; variants: ColorVariant[]; onUpdate: () => void }) {
+  const [newName, setNewName] = useState('')
+  const [newHex, setNewHex] = useState('#000000')
+
+  const handleAdd = async () => {
+    const trimmed = newName.trim()
+    if (!trimmed) return
+    const updated = [...variants, { name: trimmed, hex: newHex }]
+    await api.updateSetColors(setId, updated)
+    setNewName('')
+    setNewHex('#000000')
+    onUpdate()
+  }
+
+  const handleRemove = async (index: number) => {
+    const updated = variants.filter((_, i) => i !== index)
+    await api.updateSetColors(setId, updated)
+    onUpdate()
+  }
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-lg font-semibold mb-3">Color Variants</h2>
+      <div className="flex flex-wrap items-start gap-4 mb-4">
+        {variants.map((v, i) => (
+          <div key={i} className="flex flex-col items-center gap-1">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full border border-gray-200" style={{ backgroundColor: v.hex }} />
+              <button onClick={() => handleRemove(i)}
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600">
+                <X size={10} />
+              </button>
+            </div>
+            <span className="text-xs text-gray-600 max-w-[60px] truncate text-center">{v.name}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
+          placeholder="Color name" className="rounded-lg border px-3 py-1.5 text-sm w-36" />
+        <input type="color" value={newHex} onChange={(e) => setNewHex(e.target.value)}
+          className="w-8 h-8 rounded cursor-pointer border-0 p-0" />
+        <button onClick={handleAdd} disabled={!newName.trim()}
+          className="flex items-center gap-1 rounded-lg bg-gray-800 px-3 py-1.5 text-white text-sm font-medium hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed">
+          <Plus size={14} /> Add
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function SetDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [set, setSet] = useState<MockupSet | null>(null)
@@ -159,6 +216,9 @@ export default function SetDetailPage() {
           ))}
         </div>
       )}
+
+      <ColorVariantManager setId={id} variants={set.colorVariants ?? []}
+        onUpdate={() => api.getSet(id).then(setSet)} />
     </div>
   )
 }

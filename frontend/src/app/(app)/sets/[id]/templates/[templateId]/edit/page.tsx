@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { MockupCanvas } from '@/components/editor/mockup-canvas'
+import { MaskEditor } from '@/components/editor/mask-editor'
 import { Toolbar } from '@/components/editor/toolbar'
 import { OverlayConfig, CurveAxis } from '@/lib/canvas-utils'
 
@@ -128,6 +129,19 @@ export default function TemplateEditorPage() {
         onConfigChange={setConfig}
         mode={mode}
       />
+
+      <details className="mt-6 border rounded-lg">
+        <summary className="px-4 py-3 cursor-pointer font-medium text-sm text-gray-700 hover:bg-gray-50">
+          Product Mask (for color variants)
+        </summary>
+        <div className="p-4 border-t">
+          <MaskEditor
+            setId={setId}
+            templateId={templateId}
+            imageUrl={`/uploads/${template.originalImagePath}`}
+          />
+        </div>
+      </details>
     </div>
   )
 }

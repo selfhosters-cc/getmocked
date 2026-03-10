@@ -63,8 +63,17 @@ export const api = {
   deleteDesign: (id: string) => request(`/api/designs/${id}`, { method: 'DELETE' }),
 
   // Render
-  batchRender: (mockupSetId: string, designId: string) =>
-    request('/api/render/batch', { method: 'POST', body: JSON.stringify({ mockupSetId, designId }) }),
+  batchRender: (
+    mockupSetId: string,
+    designId: string,
+    colorVariants?: string[],
+    outputMode?: string,
+    outputColor?: string,
+  ) =>
+    request('/api/render/batch', {
+      method: 'POST',
+      body: JSON.stringify({ mockupSetId, designId, colorVariants, outputMode, outputColor }),
+    }),
   getRenderStatus: (mockupSetId: string, designId: string) =>
     request(`/api/render/status?mockupSetId=${mockupSetId}&designId=${designId}`),
   getDownloadUrl: (renderId: string) => `/api/render/${renderId}/download`,

@@ -9,7 +9,7 @@ const PROCESSING_URL = process.env.PROCESSING_URL || 'http://localhost:5000'
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireAuth()
-    const { mockupSetId, designId } = await req.json()
+    const { mockupSetId, designId, colorVariants, outputMode, outputColor } = await req.json()
 
     const set = await prisma.mockupSet.findFirst({
       where: { id: mockupSetId, userId },
@@ -29,23 +29,34 @@ export async function POST(req: NextRequest) {
       data: { userId, mockupSetId, designId },
     })
 
+    // Build color combinations: each entry is a tintColor or null (original)
+    const colors: (string | null)[] =
+      Array.isArray(colorVariants) && colorVariants.length > 0 ? colorVariants : [null]
+
+    // Create renders for each template × color combination
+    const renderItems: { template: (typeof set.templates)[number]; tintColor: string | null }[] =
+      set.templates.flatMap((template) => colors.map((tintColor) => ({ template, tintColor })))
+
     const renders = await Promise.all(
-      set.templates.map((template) =>
-        prisma.renderedMockup.create({
+      renderItems.map(({ template, tintColor }) => {
+        const renderOptions = { tintColor, outputMode: outputMode || null, outputColor: outputColor || null }
+        return prisma.renderedMockup.create({
           data: {
             mockupTemplateId: template.id,
             designId: design.id,
             batchId: batch.id,
             renderedImagePath: '',
             status: 'pending',
+            renderOptions,
           },
         })
-      )
+      })
     )
 
-    for (const [i, template] of set.templates.entries()) {
+    for (const [i, { template, tintColor }] of renderItems.entries()) {
       const render = renders[i]
-      processRender(template, design, render.id).catch(async (err) => {
+      const renderOptions = { tintColor, outputMode: outputMode || null, outputColor: outputColor || null }
+      processRender(template, design, render.id, renderOptions).catch(async (err) => {
         console.error(`Render failed for ${render.id}:`, err)
         await prisma.renderedMockup.update({
           where: { id: render.id },
@@ -66,9 +77,26 @@ export async function POST(req: NextRequest) {
 async function processRender(
   template: { id: string; originalImagePath: string; overlayConfig: unknown },
   design: { id: string; imagePath: string },
-  renderId: string
+  renderId: string,
+  renderOptions?: { tintColor: string | null; outputMode: string | null; outputColor: string | null }
 ) {
   await prisma.renderedMockup.update({ where: { id: renderId }, data: { status: 'processing' } })
+
+  // Merge render options into overlay config for processing service
+  const overlayConfig = { ...(template.overlayConfig as Record<string, unknown>) }
+  if (renderOptions?.tintColor) {
+    overlayConfig.tintColor = renderOptions.tintColor
+    // Derive mask path from template image path (replace extension with _mask.png)
+    const templatePath = getUploadPath(template.originalImagePath)
+    const maskPath = templatePath.replace(/\.[^.]+$/, '_mask.png')
+    overlayConfig.maskPath = maskPath
+  }
+  if (renderOptions?.outputMode) {
+    overlayConfig.outputMode = renderOptions.outputMode
+  }
+  if (renderOptions?.outputColor) {
+    overlayConfig.outputColor = renderOptions.outputColor
+  }
 
   const response = await fetch(`${PROCESSING_URL}/render`, {
     method: 'POST',
@@ -76,7 +104,7 @@ async function processRender(
     body: JSON.stringify({
       templateImagePath: getUploadPath(template.originalImagePath),
       designImagePath: getUploadPath(design.imagePath),
-      overlayConfig: template.overlayConfig,
+      overlayConfig,
       outputDir: getRenderPath(`${design.id}`),
       renderId,
     }),

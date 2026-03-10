@@ -20,6 +20,7 @@ interface RenderStatus {
   status: string
   mockupTemplate: { name: string; overlayConfig?: OverlaySettings | null }
   renderedImagePath: string
+  renderOptions?: { tintColor?: string; outputMode?: string; outputColor?: string }
 }
 
 function formatElapsed(ms: number): string {
@@ -38,6 +39,10 @@ export default function ApplyDesignPage() {
   const [rendering, setRendering] = useState(false)
   const [batchId, setBatchId] = useState<string | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [set, setSet] = useState<{ name: string; templates: { id: string }[]; colorVariants?: { name: string; hex: string }[] } | null>(null)
+  const [selectedColors, setSelectedColors] = useState<string[]>([])
+  const [outputMode, setOutputMode] = useState<'original' | 'transparent' | 'solid'>('original')
+  const [outputColor, setOutputColor] = useState('#ffffff')
   const fileInput = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval>>()
 
@@ -49,7 +54,8 @@ export default function ApplyDesignPage() {
 
   useEffect(() => {
     api.getDesigns().then(setDesigns)
-  }, [])
+    api.getSet(setId).then(setSet)
+  }, [setId])
 
   // Tick the timer while rendering
   useEffect(() => {
@@ -69,6 +75,16 @@ export default function ApplyDesignPage() {
     setSelectedDesign(design.id)
   }
 
+  const toggleColor = (hex: string) => {
+    setSelectedColors((prev) =>
+      prev.includes(hex) ? prev.filter((c) => c !== hex) : [...prev, hex]
+    )
+  }
+
+  const templateCount = set?.templates?.length ?? 0
+  const colorCount = selectedColors.length
+  const totalRenders = templateCount * Math.max(colorCount, 1)
+
   const handleRender = async () => {
     if (!selectedDesign) return
     setRendering(true)
@@ -78,7 +94,12 @@ export default function ApplyDesignPage() {
     setStartTime(now)
     setElapsed(0)
 
-    const result = await api.batchRender(setId, selectedDesign)
+    const colors = selectedColors.length > 0 ? selectedColors : undefined
+    const result = await api.batchRender(
+      setId, selectedDesign, colors,
+      outputMode !== 'original' ? outputMode : undefined,
+      outputMode === 'solid' ? outputColor : undefined
+    )
     setBatchId(result.batchId)
 
     const batch = await api.getBatch(result.batchId)
@@ -156,9 +177,80 @@ export default function ApplyDesignPage() {
         </div>
       </div>
 
-      {/* Step 2: Render */}
+      {/* Step 2: Select Colors */}
       <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-3">2. Render Mockups</h2>
+        <h2 className="text-lg font-semibold mb-3">2. Select Colors (optional)</h2>
+        {set?.colorVariants && set.colorVariants.length > 0 ? (
+          <>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {set.colorVariants.map((cv) => (
+                <button
+                  key={cv.hex}
+                  onClick={() => toggleColor(cv.hex)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-colors ${
+                    selectedColors.includes(cv.hex)
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <span
+                    className="w-4 h-4 rounded-full border border-gray-300 shrink-0"
+                    style={{ backgroundColor: cv.hex }}
+                  />
+                  {cv.name}
+                </button>
+              ))}
+            </div>
+            {colorCount > 0 && templateCount > 0 && (
+              <p className="text-sm text-gray-500">
+                {templateCount} template{templateCount !== 1 ? 's' : ''} &times; {colorCount} color{colorCount !== 1 ? 's' : ''} = {totalRenders} mockups
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-gray-400">No color variants defined. Add them on the set detail page.</p>
+        )}
+      </div>
+
+      {/* Step 3: Output Mode */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold mb-3">3. Output Mode</h2>
+        <div className="flex flex-wrap gap-2">
+          {([
+            { value: 'original' as const, label: 'Original (keep background)' },
+            { value: 'transparent' as const, label: 'Transparent (PNG with alpha)' },
+            { value: 'solid' as const, label: 'Solid Color' },
+          ]).map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setOutputMode(opt.value)}
+              className={`px-4 py-2 rounded-lg border text-sm transition-colors ${
+                outputMode === opt.value
+                  ? 'border-blue-600 bg-blue-50 text-blue-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {outputMode === 'solid' && (
+          <div className="flex items-center gap-2 mt-3">
+            <label className="text-sm text-gray-600">Background color:</label>
+            <input
+              type="color"
+              value={outputColor}
+              onChange={(e) => setOutputColor(e.target.value)}
+              className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+            />
+            <span className="text-xs text-gray-400 font-mono">{outputColor}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Step 4: Render */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold mb-3">4. Render Mockups</h2>
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={handleRender} disabled={!selectedDesign || rendering}
             className="rounded-lg bg-green-600 px-6 py-2 text-white font-medium hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">
@@ -180,12 +272,12 @@ export default function ApplyDesignPage() {
         </div>
       </div>
 
-      {/* Step 3: Results (current batch only) */}
+      {/* Step 5: Results (current batch only) */}
       {renders.length > 0 && (
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
             <h2 className="text-lg font-semibold">
-              3. Results
+              5. Results
               {completedRenders.length > 0 && (
                 <span className="text-sm font-normal text-gray-500 ml-2">
                   {completedRenders.length} of {renders.length} complete
@@ -227,7 +319,16 @@ export default function ApplyDesignPage() {
                   )}
                   <div className="p-2 flex items-center justify-between">
                     <div className="min-w-0">
-                      <p className="text-xs sm:text-sm truncate">{r.mockupTemplate?.name ?? 'Rendering...'}</p>
+                      <div className="flex items-center gap-1.5">
+                        {r.renderOptions?.tintColor && (
+                          <span
+                            className="w-3 h-3 rounded-full border border-gray-300 shrink-0"
+                            style={{ backgroundColor: r.renderOptions.tintColor }}
+                            title={r.renderOptions.tintColor}
+                          />
+                        )}
+                        <p className="text-xs sm:text-sm truncate">{r.mockupTemplate?.name ?? 'Rendering...'}</p>
+                      </div>
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <span className="capitalize">{r.status}</span>
                         {r.mockupTemplate?.overlayConfig && (
