@@ -41,13 +41,18 @@ def render(req: RenderRequest):
     corners = req.overlayConfig.get("corners", [])
     displacement = req.overlayConfig.get("displacementIntensity", 0.0)
     transparency = req.overlayConfig.get("transparency", 0.0)
-    print(f"[render] displacement={displacement}, transparency={transparency}, corners={len(corners)}")
+    curvature = req.overlayConfig.get("curvature", 0.0)
+    curve_axis = req.overlayConfig.get("curveAxis", "auto")
+    print(f"[render] displacement={displacement}, transparency={transparency}, "
+          f"curvature={curvature}, curveAxis={curve_axis}, corners={len(corners)}")
     texture_data = req.overlayConfig.get("textureData")
 
     result = apply_perspective_transform(
         template, design, corners,
         displacement_intensity=displacement,
         transparency=transparency,
+        curvature=curvature,
+        curve_axis=curve_axis,
         texture_data=texture_data,
     )
 

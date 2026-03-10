@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { MockupCanvas } from '@/components/editor/mockup-canvas'
 import { Toolbar } from '@/components/editor/toolbar'
-import { OverlayConfig } from '@/lib/canvas-utils'
+import { OverlayConfig, CurveAxis } from '@/lib/canvas-utils'
 
 interface Design {
   id: string
@@ -22,6 +22,8 @@ export default function TemplateEditorPage() {
   const [mode, setMode] = useState<'advanced' | 'basic'>('advanced')
   const [displacement, setDisplacement] = useState(0.5)
   const [transparency, setTransparency] = useState(0.0)
+  const [curvature, setCurvature] = useState(0.0)
+  const [curveAxis, setCurveAxis] = useState<CurveAxis>('auto')
   const [saving, setSaving] = useState(false)
   const [designs, setDesigns] = useState<Design[]>([])
   const [selectedDesignUrl, setSelectedDesignUrl] = useState<string | null>(null)
@@ -36,6 +38,8 @@ export default function TemplateEditorPage() {
           setMode(t.overlayConfig.mode || 'advanced')
           setDisplacement(t.overlayConfig.displacementIntensity ?? 0.5)
           setTransparency(t.overlayConfig.transparency ?? 0.0)
+          setCurvature(t.overlayConfig.curvature ?? 0.0)
+          setCurveAxis(t.overlayConfig.curveAxis ?? 'auto')
         }
       }
     })
@@ -47,7 +51,14 @@ export default function TemplateEditorPage() {
     setSaving(true)
     try {
       await api.updateTemplate(setId, templateId, {
-        overlayConfig: { ...config, displacementIntensity: displacement, transparency, mode },
+        overlayConfig: {
+          ...config,
+          displacementIntensity: displacement,
+          transparency,
+          curvature,
+          curveAxis,
+          mode,
+        },
       })
       router.push(`/sets/${setId}`)
     } finally {
@@ -57,6 +68,8 @@ export default function TemplateEditorPage() {
 
   const handleReset = () => {
     setConfig(null)
+    setCurvature(0.0)
+    setCurveAxis('auto')
   }
 
   const handleDesignSelect = (designId: string) => {
@@ -78,9 +91,13 @@ export default function TemplateEditorPage() {
         mode={mode}
         displacementIntensity={displacement}
         transparency={transparency}
+        curvature={curvature}
+        curveAxis={curveAxis}
         onModeChange={setMode}
         onDisplacementChange={setDisplacement}
         onTransparencyChange={setTransparency}
+        onCurvatureChange={setCurvature}
+        onCurveAxisChange={setCurveAxis}
         onReset={handleReset}
         onSave={handleSave}
         saving={saving}
@@ -106,6 +123,8 @@ export default function TemplateEditorPage() {
         previewDesignUrl={selectedDesignUrl ?? undefined}
         transparency={transparency}
         displacement={displacement}
+        curvature={curvature}
+        curveAxis={curveAxis}
         onConfigChange={setConfig}
         mode={mode}
       />

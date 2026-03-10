@@ -1,6 +1,6 @@
 'use client'
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { Point, OverlayConfig, getDefaultCorners, findClosestCorner, drawOverlay } from '@/lib/canvas-utils'
+import { Point, OverlayConfig, CurveAxis, getDefaultCorners, findClosestCorner } from '@/lib/canvas-utils'
 
 interface MockupCanvasProps {
   imageUrl: string
@@ -8,6 +8,8 @@ interface MockupCanvasProps {
   previewDesignUrl?: string
   transparency?: number
   displacement?: number
+  curvature?: number
+  curveAxis?: CurveAxis
   onConfigChange: (config: OverlayConfig) => void
   mode: 'advanced' | 'basic'
 }
@@ -15,6 +17,7 @@ interface MockupCanvasProps {
 export function MockupCanvas({
   imageUrl, overlayConfig, previewDesignUrl,
   transparency = 0, displacement = 0.5,
+  curvature = 0, curveAxis = 'auto',
   onConfigChange, mode,
 }: MockupCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -71,11 +74,11 @@ export function MockupCanvas({
     ctx.drawImage(image, 0, 0, image.width * scale, image.height * scale)
 
     if (showPreview && designImage) {
-      drawRealisticPreview(ctx, image, designImage, corners, scale, transparency, displacement)
+      drawRealisticPreview(ctx, image, designImage, corners, scale, transparency, displacement, curvature, curveAxis)
     } else {
-      drawOverlay(ctx, corners, null, scale)
+      drawOverlayWithCurvature(ctx, corners, scale, curvature, curveAxis)
     }
-  }, [image, designImage, corners, scale, showPreview, transparency, displacement])
+  }, [image, designImage, corners, scale, showPreview, transparency, displacement, curvature, curveAxis])
 
   useEffect(() => { render() }, [render])
 
@@ -105,6 +108,8 @@ export function MockupCanvas({
       onConfigChange({
         corners, displacementIntensity: overlayConfig?.displacementIntensity ?? 0.5,
         transparency: overlayConfig?.transparency ?? 0, mode,
+        curvature: overlayConfig?.curvature ?? 0,
+        curveAxis: overlayConfig?.curveAxis ?? 'auto',
       })
     }
     setDragging(-1)
@@ -137,11 +142,132 @@ export function MockupCanvas({
   )
 }
 
+
+/**
+ * Resolve the effective curve axis based on quad dimensions.
+ */
+function resolveAxis(corners: Point[], curveAxis: CurveAxis): 'horizontal' | 'vertical' {
+  if (curveAxis !== 'auto') return curveAxis
+  const topW = Math.hypot(corners[1].x - corners[0].x, corners[1].y - corners[0].y)
+  const botW = Math.hypot(corners[2].x - corners[3].x, corners[2].y - corners[3].y)
+  const leftH = Math.hypot(corners[3].x - corners[0].x, corners[3].y - corners[0].y)
+  const rightH = Math.hypot(corners[2].x - corners[1].x, corners[2].y - corners[1].y)
+  const avgW = (topW + botW) / 2
+  const avgH = (leftH + rightH) / 2
+  return avgW > avgH * 1.3 ? 'vertical' : 'horizontal'
+}
+
+
+/**
+ * Draw overlay quad with curved edges to visualize curvature effect.
+ * When curvature is 0, draws straight lines (same as before).
+ * When curvature != 0, bows the appropriate edges inward using bezier curves.
+ */
+function drawOverlayWithCurvature(
+  ctx: CanvasRenderingContext2D,
+  corners: Point[],
+  scale: number,
+  curvature: number,
+  curveAxis: CurveAxis,
+) {
+  if (corners.length !== 4) return
+
+  ctx.save()
+  const sc = corners.map((c) => ({ x: c.x * scale, y: c.y * scale }))
+  const axis = resolveAxis(corners, curveAxis)
+  // Bow amount: how far the midpoint of curved edges shifts inward
+  const bow = curvature * 0.3 // Scale down for visual — full curvature bows edges 30% of span
+
+  ctx.beginPath()
+
+  if (Math.abs(curvature) < 0.01) {
+    // Straight lines (no curvature)
+    ctx.moveTo(sc[0].x, sc[0].y)
+    ctx.lineTo(sc[1].x, sc[1].y)
+    ctx.lineTo(sc[2].x, sc[2].y)
+    ctx.lineTo(sc[3].x, sc[3].y)
+  } else if (axis === 'horizontal') {
+    // Curve left and right edges (TL→BL and TR→BR)
+    const leftMidX = (sc[0].x + sc[3].x) / 2
+    const leftMidY = (sc[0].y + sc[3].y) / 2
+    const rightMidX = (sc[1].x + sc[2].x) / 2
+    const rightMidY = (sc[1].y + sc[2].y) / 2
+
+    // Horizontal span for bow calculation
+    const span = Math.abs(rightMidX - leftMidX)
+    const leftBowX = leftMidX + bow * span
+    const rightBowX = rightMidX - bow * span
+
+    ctx.moveTo(sc[0].x, sc[0].y)
+    // Top edge: straight
+    ctx.lineTo(sc[1].x, sc[1].y)
+    // Right edge: curved
+    ctx.quadraticCurveTo(rightBowX, rightMidY, sc[2].x, sc[2].y)
+    // Bottom edge: straight
+    ctx.lineTo(sc[3].x, sc[3].y)
+    // Left edge: curved
+    ctx.quadraticCurveTo(leftBowX, leftMidY, sc[0].x, sc[0].y)
+  } else {
+    // Curve top and bottom edges (TL→TR and BL→BR)
+    const topMidX = (sc[0].x + sc[1].x) / 2
+    const topMidY = (sc[0].y + sc[1].y) / 2
+    const botMidX = (sc[3].x + sc[2].x) / 2
+    const botMidY = (sc[3].y + sc[2].y) / 2
+
+    const span = Math.abs(botMidY - topMidY)
+    const topBowY = topMidY + bow * span
+    const botBowY = botMidY - bow * span
+
+    ctx.moveTo(sc[0].x, sc[0].y)
+    // Top edge: curved
+    ctx.quadraticCurveTo(topMidX, topBowY, sc[1].x, sc[1].y)
+    // Right edge: straight
+    ctx.lineTo(sc[2].x, sc[2].y)
+    // Bottom edge: curved
+    ctx.quadraticCurveTo(botMidX, botBowY, sc[3].x, sc[3].y)
+    // Left edge: straight
+    ctx.lineTo(sc[0].x, sc[0].y)
+  }
+
+  ctx.closePath()
+  ctx.strokeStyle = '#3b82f6'
+  ctx.lineWidth = 2
+  ctx.stroke()
+  ctx.fillStyle = 'rgba(59, 130, 246, 0.15)'
+  ctx.fill()
+
+  // Draw corner handles
+  for (const corner of sc) {
+    ctx.beginPath()
+    ctx.arc(corner.x, corner.y, 8, 0, Math.PI * 2)
+    ctx.fillStyle = '#3b82f6'
+    ctx.fill()
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
+
+  // Show axis indicator when curvature is active
+  if (Math.abs(curvature) >= 0.01) {
+    const centerX = (sc[0].x + sc[1].x + sc[2].x + sc[3].x) / 4
+    const centerY = (sc[0].y + sc[1].y + sc[2].y + sc[3].y) / 4
+    ctx.font = '11px sans-serif'
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.8)'
+    ctx.textAlign = 'center'
+    const label = `${Math.round(curvature * 100)}% ${axis === 'horizontal' ? '↔' : '↕'}`
+    ctx.fillText(label, centerX, centerY)
+  }
+
+  ctx.restore()
+}
+
+
 /**
  * Draw a realtime preview that approximates the server-side render:
  * - Perspective-clips the design into the overlay quad
  * - Applies transparency (globalAlpha)
  * - Simulates multiply blend for displacement effect
+ * - Approximates curvature with horizontal/vertical scaling
  */
 function drawRealisticPreview(
   ctx: CanvasRenderingContext2D,
@@ -151,6 +277,8 @@ function drawRealisticPreview(
   scale: number,
   transparency: number,
   displacement: number,
+  curvature: number,
+  curveAxis: CurveAxis,
 ) {
   const w = templateImage.width * scale
   const h = templateImage.height * scale
@@ -191,34 +319,58 @@ function drawRealisticPreview(
     drawY = minY
   }
 
-  // Clip to overlay quad
+  // Clip to overlay quad (use curved path if curvature is set)
+  const axis = resolveAxis(corners, curveAxis)
   ctx.save()
   ctx.beginPath()
-  ctx.moveTo(sc[0].x, sc[0].y)
-  for (let i = 1; i < 4; i++) ctx.lineTo(sc[i].x, sc[i].y)
+
+  if (Math.abs(curvature) < 0.01) {
+    ctx.moveTo(sc[0].x, sc[0].y)
+    for (let i = 1; i < 4; i++) ctx.lineTo(sc[i].x, sc[i].y)
+  } else {
+    const bow = curvature * 0.3
+    if (axis === 'horizontal') {
+      const leftMidX = (sc[0].x + sc[3].x) / 2
+      const leftMidY = (sc[0].y + sc[3].y) / 2
+      const rightMidX = (sc[1].x + sc[2].x) / 2
+      const rightMidY = (sc[1].y + sc[2].y) / 2
+      const span = Math.abs(rightMidX - leftMidX)
+      ctx.moveTo(sc[0].x, sc[0].y)
+      ctx.lineTo(sc[1].x, sc[1].y)
+      ctx.quadraticCurveTo(rightMidX - bow * span, rightMidY, sc[2].x, sc[2].y)
+      ctx.lineTo(sc[3].x, sc[3].y)
+      ctx.quadraticCurveTo(leftMidX + bow * span, leftMidY, sc[0].x, sc[0].y)
+    } else {
+      const topMidX = (sc[0].x + sc[1].x) / 2
+      const topMidY = (sc[0].y + sc[1].y) / 2
+      const botMidX = (sc[3].x + sc[2].x) / 2
+      const botMidY = (sc[3].y + sc[2].y) / 2
+      const span = Math.abs(botMidY - topMidY)
+      ctx.moveTo(sc[0].x, sc[0].y)
+      ctx.quadraticCurveTo(topMidX, topMidY + bow * span, sc[1].x, sc[1].y)
+      ctx.lineTo(sc[2].x, sc[2].y)
+      ctx.quadraticCurveTo(botMidX, botMidY - bow * span, sc[3].x, sc[3].y)
+      ctx.lineTo(sc[0].x, sc[0].y)
+    }
+  }
   ctx.closePath()
   ctx.clip()
 
-  // Simulate multiply blend by drawing the design darker based on displacement
-  // Higher displacement = more fabric interaction = multiply-like effect
+  // Simulate curvature in preview: compress design edges along curve axis
+  // This is a rough approximation — the real barrel distortion happens server-side
   const opacity = 1 - transparency
 
   if (displacement > 0.1) {
-    // Draw design with multiply-like effect:
-    // First draw design at reduced opacity, then overlay with multiply simulation
     ctx.globalAlpha = opacity
     ctx.drawImage(designImage, drawX, drawY, drawW, drawH)
 
-    // Simulate multiply by re-drawing the template region on top with
-    // partial opacity in 'multiply' composite mode
     ctx.globalCompositeOperation = 'multiply'
-    ctx.globalAlpha = displacement * 0.6  // scale blend strength like server-side
+    ctx.globalAlpha = displacement * 0.6
     ctx.drawImage(templateImage, 0, 0, w, h)
 
     ctx.globalCompositeOperation = 'source-over'
     ctx.globalAlpha = 1
   } else {
-    // Simple overlay with just transparency
     ctx.globalAlpha = opacity
     ctx.drawImage(designImage, drawX, drawY, drawW, drawH)
     ctx.globalAlpha = 1

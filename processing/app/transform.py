@@ -42,12 +42,83 @@ def _prepare_design_alpha(design: Image.Image) -> np.ndarray:
     return rgba
 
 
+def _apply_curvature(
+    design: np.ndarray,
+    curvature: float,
+    axis: str,
+    dst_pts: np.ndarray,
+) -> np.ndarray:
+    """Apply barrel/pincushion distortion to simulate wrapping around a cylinder.
+
+    curvature: -1 to 1. Positive = convex (mug), negative = concave.
+    axis: 'auto', 'horizontal', or 'vertical'.
+      - horizontal: distort along x-axis (vertical cylinder like a mug)
+      - vertical: distort along y-axis (horizontal cylinder like a tubular pillow)
+      - auto: pick based on overlay quad aspect ratio
+    """
+    if abs(curvature) < 0.01:
+        return design
+
+    h, w = design.shape[:2]
+
+    # Determine effective axis
+    if axis == "auto":
+        # Estimate quad dimensions
+        top_w = np.linalg.norm(dst_pts[1] - dst_pts[0])
+        bot_w = np.linalg.norm(dst_pts[2] - dst_pts[3])
+        left_h = np.linalg.norm(dst_pts[3] - dst_pts[0])
+        right_h = np.linalg.norm(dst_pts[2] - dst_pts[1])
+        quad_w = (top_w + bot_w) / 2
+        quad_h = (left_h + right_h) / 2
+        effective_axis = "vertical" if quad_w > quad_h * 1.3 else "horizontal"
+    else:
+        effective_axis = axis
+
+    # Build remap coordinates (vectorized for performance)
+    map_x, map_y = _build_curvature_maps(w, h, curvature, effective_axis)
+
+    result = cv2.remap(
+        design, map_x, map_y,
+        interpolation=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(0, 0, 0, 0),
+    )
+    return result
+
+
+def _build_curvature_maps(
+    w: int, h: int, curvature: float, axis: str
+) -> tuple[np.ndarray, np.ndarray]:
+    """Build remap coordinate arrays (vectorized for performance)."""
+    cols = np.arange(w, dtype=np.float32)
+    rows = np.arange(h, dtype=np.float32)
+
+    if axis == "horizontal":
+        # Normalize cols to [-1, 1]
+        t = (cols / max(w - 1, 1)) * 2.0 - 1.0
+        t_new = t * (1.0 + curvature * t * t)
+        mapped_cols = (t_new + 1.0) / 2.0 * max(w - 1, 1)
+        # Broadcast to full grid
+        map_x = np.tile(mapped_cols, (h, 1))
+        map_y = np.tile(rows.reshape(-1, 1), (1, w))
+    else:
+        t = (rows / max(h - 1, 1)) * 2.0 - 1.0
+        t_new = t * (1.0 + curvature * t * t)
+        mapped_rows = (t_new + 1.0) / 2.0 * max(h - 1, 1)
+        map_x = np.tile(cols, (h, 1))
+        map_y = np.tile(mapped_rows.reshape(-1, 1), (1, w))
+
+    return map_x, map_y
+
+
 def apply_perspective_transform(
     template: Image.Image,
     design: Image.Image,
     corners: list[dict],
     displacement_intensity: float = 0.0,
     transparency: float = 0.0,
+    curvature: float = 0.0,
+    curve_axis: str = "auto",
     texture_data: dict | None = None,
 ) -> Image.Image:
     """Apply a design onto a template image using perspective warp."""
@@ -65,6 +136,11 @@ def apply_perspective_transform(
 
     # Fit design into overlay quad while preserving aspect ratio
     design_cv = _fit_design_to_quad(design_cv, dst_pts)
+
+    # Apply curvature distortion before perspective warp
+    if abs(curvature) > 0.01:
+        design_cv = _apply_curvature(design_cv, curvature, curve_axis, dst_pts)
+        print(f"[curvature] intensity={curvature}, axis={curve_axis}")
 
     h, w = design_cv.shape[:2]
 

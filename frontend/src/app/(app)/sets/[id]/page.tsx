@@ -14,6 +14,8 @@ interface TemplateOverlayConfig {
   corners: OverlayCorner[]
   displacementIntensity?: number
   transparency?: number
+  curvature?: number
+  curveAxis?: string
   mode?: string
 }
 
@@ -44,6 +46,7 @@ function TemplateCard({ template: t, setId, onDelete }: { template: Template; se
   const corners = t.overlayConfig?.corners
   const displacement = t.overlayConfig?.displacementIntensity
   const tTransparency = t.overlayConfig?.transparency
+  const tCurvature = t.overlayConfig?.curvature
 
   return (
     <div className="group relative rounded-xl border bg-white overflow-hidden">
@@ -73,6 +76,9 @@ function TemplateCard({ template: t, setId, onDelete }: { template: Template; se
               )}
               {tTransparency !== undefined && tTransparency > 0 && (
                 <span>Trans: {Math.round(tTransparency * 100)}%</span>
+              )}
+              {tCurvature !== undefined && Math.abs(tCurvature) > 0.01 && (
+                <span>Curve: {Math.round(tCurvature * 100)}%</span>
               )}
             </>
           ) : (

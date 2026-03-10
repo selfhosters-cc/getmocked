@@ -3,10 +3,14 @@ export interface Point {
   y: number
 }
 
+export type CurveAxis = 'auto' | 'horizontal' | 'vertical'
+
 export interface OverlayConfig {
   corners: Point[]
   displacementIntensity: number
   transparency: number  // 0 = fully opaque, 1 = fully transparent
+  curvature?: number    // -1 to 1, 0 = flat
+  curveAxis?: CurveAxis // default 'auto'
   textureData?: Record<string, unknown>
   mode: 'advanced' | 'basic'
   rotation?: number

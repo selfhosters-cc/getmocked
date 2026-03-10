@@ -58,15 +58,29 @@ trap cleanup EXIT INT TERM
 
 # Kill any leftover processes from a previous session
 echo "=== Checking for stale processes ==="
-for port in 3335 5000; do
-  pid=$(lsof -ti :"$port" 2>/dev/null || true)
-  if [ -n "$pid" ]; then
-    echo "Killing existing process on port $port (PID $pid)"
-    kill $pid 2>/dev/null || true
-    sleep 0.5
-    kill -9 $pid 2>/dev/null || true
+kill_port() {
+  local port=$1
+  # Try ss first (most reliable on Linux), fall back to lsof
+  local pids=""
+  if command -v ss &>/dev/null; then
+    pids=$(ss -tlnp sport = :"$port" 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u)
   fi
-done
+  if [ -z "$pids" ] && command -v lsof &>/dev/null; then
+    pids=$(lsof -ti :"$port" 2>/dev/null || true)
+  fi
+  if [ -n "$pids" ]; then
+    for pid in $pids; do
+      echo "Killing process on port $port (PID $pid)"
+      kill "$pid" 2>/dev/null || true
+    done
+    sleep 1
+    for pid in $pids; do
+      kill -9 "$pid" 2>/dev/null || true
+    done
+  fi
+}
+kill_port 3335
+kill_port 5000
 
 echo ""
 echo "=== Starting services ==="
