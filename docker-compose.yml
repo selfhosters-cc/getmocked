@@ -1,34 +1,21 @@
 version: "3.8"
 
 services:
-  db:
-    image: postgres:16-alpine
+  frontend:
+    build: ./frontend
     ports:
-      - "5433:5432"
+      - "3335:3000"
+    env_file: .env
     environment:
-      POSTGRES_USER: getmocked
-      POSTGRES_PASSWORD: getmocked
-      POSTGRES_DB: getmocked
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  backend:
-    build: ./backend
-    ports:
-      - "4000:4000"
-    environment:
-      DATABASE_URL: postgresql://getmocked:getmocked@db:5432/getmocked
-      JWT_SECRET: dev-secret-change-me
       PROCESSING_URL: http://processing:5000
       UPLOAD_DIR: /app/uploads
       RENDER_DIR: /app/rendered
     volumes:
-      - ./backend:/app
+      - ./frontend:/app
       - /app/node_modules
+      - /app/.next
       - uploads:/app/uploads
       - rendered:/app/rendered
-    depends_on:
-      - db
 
   processing:
     build: ./processing
@@ -37,20 +24,6 @@ services:
       - uploads:/app/uploads
       - rendered:/app/rendered
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4000
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    depends_on:
-      - backend
-
 volumes:
-  pgdata:
   uploads:
   rendered:

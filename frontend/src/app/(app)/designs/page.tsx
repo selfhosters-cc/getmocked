@@ -3,8 +3,6 @@ import { useEffect, useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import { Upload, Trash2 } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-
 interface Design {
   id: string
   name: string
@@ -49,13 +47,13 @@ export default function DesignsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {designs.map((d) => (
           <div key={d.id} className="group relative rounded-xl border bg-white overflow-hidden">
-            <img src={`${API_URL}/uploads/${d.imagePath}`} alt={d.name}
+            <img src={`/uploads/${d.imagePath}`} alt={d.name}
               className="w-full aspect-square object-cover" />
             <div className="p-2">
               <p className="text-sm truncate">{d.name}</p>
             </div>
             <button onClick={() => handleDelete(d.id)}
-              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 rounded-full bg-white p-2 shadow hover:bg-red-50 transition-opacity">
+              className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 rounded-full bg-white p-2 shadow hover:bg-red-50 transition-opacity">
               <Trash2 size={14} className="text-red-500" />
             </button>
           </div>

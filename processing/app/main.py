@@ -2,7 +2,7 @@ import os
 from uuid import uuid4
 from fastapi import FastAPI
 from pydantic import BaseModel
-from PIL import Image
+from PIL import Image, ImageOps
 
 from app.transform import apply_perspective_transform
 from app.texture import detect_texture
@@ -35,16 +35,19 @@ def health():
 
 @app.post("/render")
 def render(req: RenderRequest):
-    template = Image.open(req.templateImagePath)
-    design = Image.open(req.designImagePath)
+    template = ImageOps.exif_transpose(Image.open(req.templateImagePath))
+    design = ImageOps.exif_transpose(Image.open(req.designImagePath))
 
     corners = req.overlayConfig.get("corners", [])
     displacement = req.overlayConfig.get("displacementIntensity", 0.0)
+    transparency = req.overlayConfig.get("transparency", 0.0)
+    print(f"[render] displacement={displacement}, transparency={transparency}, corners={len(corners)}")
     texture_data = req.overlayConfig.get("textureData")
 
     result = apply_perspective_transform(
         template, design, corners,
         displacement_intensity=displacement,
+        transparency=transparency,
         texture_data=texture_data,
     )
 
@@ -57,7 +60,7 @@ def render(req: RenderRequest):
 
 @app.post("/detect-texture")
 def detect_texture_endpoint(req: TextureDetectRequest):
-    image = Image.open(req.imagePath)
+    image = ImageOps.exif_transpose(Image.open(req.imagePath))
     corners = [{"x": c.x, "y": c.y} for c in req.corners]
     result = detect_texture(image, corners)
     return result

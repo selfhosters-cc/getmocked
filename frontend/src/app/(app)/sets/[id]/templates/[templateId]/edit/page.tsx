@@ -4,9 +4,13 @@ import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { MockupCanvas } from '@/components/editor/mockup-canvas'
 import { Toolbar } from '@/components/editor/toolbar'
-import { OverlayConfig, getDefaultCorners } from '@/lib/canvas-utils'
+import { OverlayConfig } from '@/lib/canvas-utils'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+interface Design {
+  id: string
+  name: string
+  imagePath: string
+}
 
 export default function TemplateEditorPage() {
   const { id: setId, templateId } = useParams<{ id: string; templateId: string }>()
@@ -17,7 +21,10 @@ export default function TemplateEditorPage() {
   const [config, setConfig] = useState<OverlayConfig | null>(null)
   const [mode, setMode] = useState<'advanced' | 'basic'>('advanced')
   const [displacement, setDisplacement] = useState(0.5)
+  const [transparency, setTransparency] = useState(0.0)
   const [saving, setSaving] = useState(false)
+  const [designs, setDesigns] = useState<Design[]>([])
+  const [selectedDesignUrl, setSelectedDesignUrl] = useState<string | null>(null)
 
   useEffect(() => {
     api.getSet(setId).then((set) => {
@@ -28,9 +35,11 @@ export default function TemplateEditorPage() {
           setConfig(t.overlayConfig)
           setMode(t.overlayConfig.mode || 'advanced')
           setDisplacement(t.overlayConfig.displacementIntensity ?? 0.5)
+          setTransparency(t.overlayConfig.transparency ?? 0.0)
         }
       }
     })
+    api.getDesigns().then(setDesigns)
   }, [setId, templateId])
 
   const handleSave = async () => {
@@ -38,7 +47,7 @@ export default function TemplateEditorPage() {
     setSaving(true)
     try {
       await api.updateTemplate(setId, templateId, {
-        overlayConfig: { ...config, displacementIntensity: displacement, mode },
+        overlayConfig: { ...config, displacementIntensity: displacement, transparency, mode },
       })
       router.push(`/sets/${setId}`)
     } finally {
@@ -50,6 +59,15 @@ export default function TemplateEditorPage() {
     setConfig(null)
   }
 
+  const handleDesignSelect = (designId: string) => {
+    if (!designId) {
+      setSelectedDesignUrl(null)
+      return
+    }
+    const d = designs.find((d) => d.id === designId)
+    if (d) setSelectedDesignUrl(`/uploads/${d.imagePath}`)
+  }
+
   if (!template) return <div>Loading...</div>
 
   return (
@@ -59,16 +77,35 @@ export default function TemplateEditorPage() {
       <Toolbar
         mode={mode}
         displacementIntensity={displacement}
+        transparency={transparency}
         onModeChange={setMode}
         onDisplacementChange={setDisplacement}
+        onTransparencyChange={setTransparency}
         onReset={handleReset}
         onSave={handleSave}
         saving={saving}
       />
 
+      <div className="flex items-center gap-3 mb-4">
+        <label className="text-sm font-medium">Preview design:</label>
+        <select onChange={(e) => handleDesignSelect(e.target.value)}
+          className="rounded border px-2 py-1 text-sm" defaultValue="">
+          <option value="">None</option>
+          {designs.map((d) => (
+            <option key={d.id} value={d.id}>{d.name}</option>
+          ))}
+        </select>
+        {selectedDesignUrl && (
+          <img src={selectedDesignUrl} alt="Preview design" className="w-8 h-8 rounded object-cover" />
+        )}
+      </div>
+
       <MockupCanvas
-        imageUrl={`${API_URL}/uploads/${template.originalImagePath}`}
+        imageUrl={`/uploads/${template.originalImagePath}`}
         overlayConfig={config}
+        previewDesignUrl={selectedDesignUrl ?? undefined}
+        transparency={transparency}
+        displacement={displacement}
         onConfigChange={setConfig}
         mode={mode}
       />

@@ -1,8 +1,9 @@
 'use client'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { LayoutDashboard, Layers, Palette, ImageDown, LogOut } from 'lucide-react'
+import { LayoutDashboard, Layers, Palette, ImageDown, LogOut, Menu, X } from 'lucide-react'
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,11 +15,30 @@ const nav = [
 export function Sidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
+  const [open, setOpen] = useState(false)
 
-  return (
-    <aside className="flex h-screen w-64 flex-col bg-gray-900 text-white">
-      <div className="p-6">
+  // Close sidebar on route change
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
+  // Prevent body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+
+  const sidebarContent = (
+    <>
+      <div className="p-6 flex items-center justify-between">
         <h1 className="text-xl font-bold">Get Mocked</h1>
+        <button onClick={() => setOpen(false)} className="md:hidden text-gray-400 hover:text-white p-1">
+          <X size={20} />
+        </button>
       </div>
       <nav className="flex-1 px-4">
         {nav.map(({ href, label, icon: Icon }) => (
@@ -35,11 +55,43 @@ export function Sidebar() {
         ))}
       </nav>
       <div className="border-t border-gray-700 p-4">
-        <div className="text-sm text-gray-400 mb-2">{user?.email}</div>
+        <div className="text-sm text-gray-400 mb-2 truncate">{user?.email}</div>
         <button onClick={logout} className="flex items-center gap-2 text-gray-400 hover:text-white text-sm">
           <LogOut size={16} /> Sign out
         </button>
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile header bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-gray-900 text-white flex items-center h-14 px-4">
+        <button onClick={() => setOpen(true)} className="p-1 -ml-1">
+          <Menu size={24} />
+        </button>
+        <span className="ml-3 font-bold">Get Mocked</span>
+      </div>
+
+      {/* Mobile overlay */}
+      {open && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setOpen(false)} />
+      )}
+
+      {/* Mobile slide-out drawer */}
+      <aside className={`
+        md:hidden fixed top-0 left-0 z-50 h-full w-64 bg-gray-900 text-white
+        transform transition-transform duration-200 ease-in-out
+        ${open ? 'translate-x-0' : '-translate-x-full'}
+        flex flex-col
+      `}>
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex h-screen w-64 flex-col bg-gray-900 text-white shrink-0">
+        {sidebarContent}
+      </aside>
+    </>
   )
 }

@@ -1,7 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-
 async function request(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(path, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
@@ -36,7 +34,7 @@ export const api = {
     const form = new FormData()
     form.append('image', file)
     if (name) form.append('name', name)
-    return fetch(`${API_URL}/api/mockup-sets/${setId}/templates`, {
+    return fetch(`/api/mockup-sets/${setId}/templates`, {
       method: 'POST',
       credentials: 'include',
       body: form,
@@ -56,7 +54,7 @@ export const api = {
     const form = new FormData()
     form.append('image', file)
     if (name) form.append('name', name)
-    return fetch(`${API_URL}/api/designs`, {
+    return fetch('/api/designs', {
       method: 'POST',
       credentials: 'include',
       body: form,
@@ -69,7 +67,15 @@ export const api = {
     request('/api/render/batch', { method: 'POST', body: JSON.stringify({ mockupSetId, designId }) }),
   getRenderStatus: (mockupSetId: string, designId: string) =>
     request(`/api/render/status?mockupSetId=${mockupSetId}&designId=${designId}`),
-  getDownloadUrl: (renderId: string) => `${API_URL}/api/render/${renderId}/download`,
+  getDownloadUrl: (renderId: string) => `/api/render/${renderId}/download`,
   getZipUrl: (mockupSetId: string, designId: string) =>
-    `${API_URL}/api/render/download-zip?mockupSetId=${mockupSetId}&designId=${designId}`,
+    `/api/render/download-zip?mockupSetId=${mockupSetId}&designId=${designId}`,
+
+  // Batches
+  getBatches: (page = 1) => request(`/api/render/batches?page=${page}`),
+  getBatch: (batchId: string) => request(`/api/render/batches/${batchId}`),
+  deleteBatch: (batchId: string) => request(`/api/render/batches/${batchId}`, { method: 'DELETE' }),
+
+  // Dashboard
+  getDashboard: () => request('/api/dashboard'),
 }

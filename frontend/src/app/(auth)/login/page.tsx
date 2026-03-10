@@ -4,8 +4,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,7 +28,7 @@ export default function LoginPage() {
         <h1 className="mb-6 text-2xl font-bold text-center">Sign in to Get Mocked</h1>
 
         <a
-          href={`${API_URL}/api/auth/google`}
+          href="/api/auth/google"
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 font-medium hover:bg-gray-50 mb-4"
         >
           Sign in with Google

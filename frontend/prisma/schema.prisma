@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  name         String?
+  passwordHash String?      @map("password_hash")
+  authProvider String       @default("email") @map("auth_provider")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  mockupSets    MockupSet[]
+  designs       Design[]
+  renderBatches RenderBatch[]
+
+  @@map("users")
+}
+
+model MockupSet {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  name        String
+  description String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  user          User             @relation(fields: [userId], references: [id])
+  templates     MockupTemplate[]
+  renderBatches RenderBatch[]
+
+  @@map("mockup_sets")
+}
+
+model MockupTemplate {
+  id               String          @id @default(uuid())
+  mockupSetId      String          @map("mockup_set_id")
+  name             String
+  originalImagePath String         @map("original_image_path")
+  overlayConfig    Json?           @map("overlay_config")
+  sortOrder        Int             @default(0) @map("sort_order")
+  mockupSet        MockupSet       @relation(fields: [mockupSetId], references: [id], onDelete: Cascade)
+  renderedMockups  RenderedMockup[]
+
+  @@map("mockup_templates")
+}
+
+model Design {
+  id              String          @id @default(uuid())
+  userId          String          @map("user_id")
+  name            String
+  imagePath       String          @map("image_path")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  user            User            @relation(fields: [userId], references: [id])
+  renderedMockups RenderedMockup[]
+  renderBatches   RenderBatch[]
+
+  @@map("designs")
+}
+
+model RenderBatch {
+  id           String          @id @default(uuid())
+  userId       String          @map("user_id")
+  mockupSetId  String          @map("mockup_set_id")
+  designId     String          @map("design_id")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  user         User            @relation(fields: [userId], references: [id])
+  mockupSet    MockupSet       @relation(fields: [mockupSetId], references: [id])
+  design       Design          @relation(fields: [designId], references: [id])
+  renders      RenderedMockup[]
+
+  @@map("render_batches")
+}
+
+model RenderedMockup {
+  id                String         @id @default(uuid())
+  mockupTemplateId  String         @map("mockup_template_id")
+  designId          String         @map("design_id")
+  batchId           String?        @map("batch_id")
+  renderedImagePath String         @map("rendered_image_path")
+  status            String         @default("pending")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  mockupTemplate    MockupTemplate @relation(fields: [mockupTemplateId], references: [id], onDelete: Cascade)
+  design            Design         @relation(fields: [designId], references: [id])
+  batch             RenderBatch?   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@map("rendered_mockups")
+}

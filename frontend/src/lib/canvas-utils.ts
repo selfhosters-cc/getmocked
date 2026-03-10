@@ -6,6 +6,7 @@ export interface Point {
 export interface OverlayConfig {
   corners: Point[]
   displacementIntensity: number
+  transparency: number  // 0 = fully opaque, 1 = fully transparent
   textureData?: Record<string, unknown>
   mode: 'advanced' | 'basic'
   rotation?: number
