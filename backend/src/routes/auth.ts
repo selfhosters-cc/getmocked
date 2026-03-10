@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { hashPassword, comparePassword } from '../lib/auth-utils.js'
-import { signToken } from '../lib/jwt.js'
+import { signToken, verifyToken } from '../lib/jwt.js'
 
 const router = Router()
 
@@ -84,7 +84,6 @@ router.get('/me', async (req: Request, res: Response) => {
     return
   }
   try {
-    const { verifyToken } = await import('../lib/jwt.js')
     const payload = verifyToken(token)
     const user = await prisma.user.findUnique({ where: { id: payload.userId } })
     if (!user) {
