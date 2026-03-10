@@ -79,7 +79,7 @@ export default function ApplyDesignPage() {
           {designs.map((d) => (
             <button key={d.id} onClick={() => setSelectedDesign(d.id)}
               className={`rounded-lg border-2 overflow-hidden ${selectedDesign === d.id ? 'border-blue-600' : 'border-transparent'}`}>
-              <img src={`${API_URL}/api/mockup-sets/uploads/${d.imagePath}`} alt={d.name}
+              <img src={`${API_URL}/uploads/${d.imagePath}`} alt={d.name}
                 className="w-full aspect-square object-cover" />
               <p className="text-xs p-1 truncate">{d.name}</p>
             </button>

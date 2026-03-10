@@ -77,7 +77,7 @@ export default function SetDetailPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {set.templates.map((t) => (
             <div key={t.id} className="group relative rounded-xl border bg-white overflow-hidden">
-              <img src={`${API_URL}/api/mockup-sets/uploads/${t.originalImagePath}`}
+              <img src={`${API_URL}/uploads/${t.originalImagePath}`}
                 alt={t.name} className="w-full aspect-square object-cover" />
               <div className="p-3">
                 <p className="text-sm font-medium truncate">{t.name}</p>

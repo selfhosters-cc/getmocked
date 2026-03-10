@@ -1,4 +1,5 @@
 import { Router, Response } from 'express'
+import archiver from 'archiver'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth, AuthRequest } from '../middleware/auth.js'
 import { getUploadPath, getRenderPath } from '../lib/storage.js'
@@ -83,9 +84,10 @@ async function processRender(
   if (!response.ok) throw new Error(`Processing service returned ${response.status}`)
 
   const result = (await response.json()) as { outputPath: string }
+  const relativePath = path.relative(process.env.RENDER_DIR || './rendered', result.outputPath)
   await prisma.renderedMockup.update({
     where: { id: renderId },
-    data: { status: 'complete', renderedImagePath: result.outputPath },
+    data: { status: 'complete', renderedImagePath: relativePath },
   })
 }
 
@@ -116,7 +118,7 @@ router.get('/:id/download', async (req: AuthRequest, res: Response) => {
     res.status(404).json({ error: 'Render not found or not complete' })
     return
   }
-  res.sendFile(render.renderedImagePath, { root: '/' })
+  res.sendFile(getRenderPath(render.renderedImagePath))
 })
 
 // Download all renders as ZIP
@@ -137,7 +139,6 @@ router.get('/download-zip', async (req: AuthRequest, res: Response) => {
     return
   }
 
-  const archiver = (await import('archiver')).default
   const archive = archiver('zip', { zlib: { level: 9 } })
   res.setHeader('Content-Type', 'application/zip')
   res.setHeader('Content-Disposition', `attachment; filename="mockups-${mockupSetId}.zip"`)
@@ -145,7 +146,7 @@ router.get('/download-zip', async (req: AuthRequest, res: Response) => {
 
   for (const render of renders) {
     const ext = path.extname(render.renderedImagePath) || '.png'
-    archive.file(render.renderedImagePath, { name: `${render.mockupTemplate.name}${ext}` })
+    archive.file(getRenderPath(render.renderedImagePath), { name: `${render.mockupTemplate.name}${ext}` })
   }
   await archive.finalize()
 })

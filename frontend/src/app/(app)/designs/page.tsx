@@ -49,7 +49,7 @@ export default function DesignsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {designs.map((d) => (
           <div key={d.id} className="group relative rounded-xl border bg-white overflow-hidden">
-            <img src={`${API_URL}/api/mockup-sets/uploads/${d.imagePath}`} alt={d.name}
+            <img src={`${API_URL}/uploads/${d.imagePath}`} alt={d.name}
               className="w-full aspect-square object-cover" />
             <div className="p-2">
               <p className="text-sm truncate">{d.name}</p>

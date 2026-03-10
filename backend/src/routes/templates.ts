@@ -107,11 +107,4 @@ router.delete('/:setId/templates/:templateId', async (req: AuthRequest, res: Res
   res.json({ ok: true })
 })
 
-// Serve uploaded images
-router.get('/uploads/*', async (req: AuthRequest, res: Response) => {
-  const filePath = req.params[0]
-  const { getUploadPath } = await import('../lib/storage.js')
-  res.sendFile(getUploadPath(filePath), { root: '/' })
-})
-
 export default router

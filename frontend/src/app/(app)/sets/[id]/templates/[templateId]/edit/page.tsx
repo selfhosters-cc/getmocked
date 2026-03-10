@@ -67,7 +67,7 @@ export default function TemplateEditorPage() {
       />
 
       <MockupCanvas
-        imageUrl={`${API_URL}/api/mockup-sets/uploads/${template.originalImagePath}`}
+        imageUrl={`${API_URL}/uploads/${template.originalImagePath}`}
         overlayConfig={config}
         onConfigChange={setConfig}
         mode={mode}
