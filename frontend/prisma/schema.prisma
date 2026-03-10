@@ -42,6 +42,7 @@ model MockupTemplate {
   originalImagePath String         @map("original_image_path")
   overlayConfig    Json?           @map("overlay_config")
   sortOrder        Int             @default(0) @map("sort_order")
+  isFavorite       Boolean         @default(false) @map("is_favorite")
   mockupSet        MockupSet       @relation(fields: [mockupSetId], references: [id], onDelete: Cascade)
   renderedMockups  RenderedMockup[]
 
@@ -66,6 +67,7 @@ model RenderBatch {
   userId       String          @map("user_id")
   mockupSetId  String          @map("mockup_set_id")
   designId     String          @map("design_id")
+  description  String?
   createdAt    DateTime        @default(now()) @map("created_at")
   user         User            @relation(fields: [userId], references: [id])
   mockupSet    MockupSet       @relation(fields: [mockupSetId], references: [id])
@@ -83,6 +85,7 @@ model RenderedMockup {
   renderedImagePath String         @map("rendered_image_path")
   status            String         @default("pending")
   renderOptions     Json?          @map("render_options")
+  isFavorite        Boolean        @default(false) @map("is_favorite")
   createdAt         DateTime       @default(now()) @map("created_at")
   mockupTemplate    MockupTemplate @relation(fields: [mockupTemplateId], references: [id], onDelete: Cascade)
   design            Design         @relation(fields: [designId], references: [id])
