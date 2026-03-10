@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { hashPassword, comparePassword } from '../lib/auth-utils.js'
 import { signToken, verifyToken } from '../lib/jwt.js'
+import passport from '../lib/passport.js'
 
 const router = Router()
 
@@ -96,6 +97,15 @@ router.get('/me', async (req: Request, res: Response) => {
   } catch {
     res.status(401).json({ error: 'Invalid token' })
   }
+})
+
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }))
+
+router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/login' }), (req: Request, res: Response) => {
+  const user = req.user as { id: string }
+  const token = signToken({ userId: user.id })
+  res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.redirect(process.env.FRONTEND_URL || 'http://localhost:3000')
 })
 
 export default router
