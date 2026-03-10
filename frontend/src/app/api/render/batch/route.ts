@@ -9,7 +9,7 @@ const PROCESSING_URL = process.env.PROCESSING_URL || 'http://localhost:5000'
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireAuth()
-    const { mockupSetId, designId, colorVariants, outputMode, outputColor } = await req.json()
+    const { mockupSetId, designId, colorVariants, outputMode, outputColor, description } = await req.json()
 
     const set = await prisma.mockupSet.findFirst({
       where: { id: mockupSetId, userId },
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     // Create batch record
     const batch = await prisma.renderBatch.create({
-      data: { userId, mockupSetId, designId },
+      data: { userId, mockupSetId, designId, description: description || null },
     })
 
     // Build color combinations: each entry is a tintColor or null (original)

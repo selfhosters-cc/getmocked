@@ -9,6 +9,7 @@ interface BatchSummary {
   createdAt: string
   mockupSet: { id: string; name: string }
   design: { id: string; name: string; imagePath: string }
+  description?: string
   totalRenders: number
   completedRenders: number
   failedRenders: number
@@ -104,6 +105,9 @@ export default function RendersPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold truncate">{b.mockupSet.name}</span>
                       </div>
+                      {b.description && (
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">{b.description}</p>
+                      )}
                       <div className="flex items-center gap-2 mt-1">
                         <img src={`/uploads/${b.design.imagePath}`} alt={b.design.name}
                           className="w-5 h-5 rounded object-cover shrink-0" />

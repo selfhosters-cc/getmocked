@@ -69,10 +69,11 @@ export const api = {
     colorVariants?: string[],
     outputMode?: string,
     outputColor?: string,
+    description?: string,
   ) =>
     request('/api/render/batch', {
       method: 'POST',
-      body: JSON.stringify({ mockupSetId, designId, colorVariants, outputMode, outputColor }),
+      body: JSON.stringify({ mockupSetId, designId, colorVariants, outputMode, outputColor, description }),
     }),
   getRenderStatus: (mockupSetId: string, designId: string) =>
     request(`/api/render/status?mockupSetId=${mockupSetId}&designId=${designId}`),
@@ -84,6 +85,8 @@ export const api = {
   getBatches: (page = 1) => request(`/api/render/batches?page=${page}`),
   getBatch: (batchId: string) => request(`/api/render/batches/${batchId}`),
   deleteBatch: (batchId: string) => request(`/api/render/batches/${batchId}`, { method: 'DELETE' }),
+  updateBatch: (batchId: string, data: { description?: string }) =>
+    request(`/api/render/batches/${batchId}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Color Variants
   updateSetColors: (id: string, colorVariants: Array<{ name: string; hex: string }>) =>
@@ -97,6 +100,20 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ maskPath, strokes }),
     }),
+
+  // Favorites
+  toggleTemplateFavorite: (setId: string, templateId: string, isFavorite: boolean) =>
+    request(`/api/mockup-sets/${setId}/templates/${templateId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isFavorite }),
+    }),
+  toggleRenderFavorite: (renderId: string) =>
+    request(`/api/render/${renderId}/favorite`, { method: 'PATCH' }),
+  getFavorites: () => request('/api/favorites'),
+
+  // Template Renders
+  getTemplateRenders: (setId: string, templateId: string, page = 1) =>
+    request(`/api/mockup-sets/${setId}/templates/${templateId}/renders?page=${page}`),
 
   // Dashboard
   getDashboard: () => request('/api/dashboard'),

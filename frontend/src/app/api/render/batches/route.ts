@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
     const result = batches.map((b) => ({
       id: b.id,
       createdAt: b.createdAt,
+      description: b.description,
       mockupSet: b.mockupSet,
       design: b.design,
       totalRenders: b.renders.length,

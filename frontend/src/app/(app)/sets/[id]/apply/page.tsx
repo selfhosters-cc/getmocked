@@ -44,6 +44,7 @@ export default function ApplyDesignPage() {
   const [selectedColors, setSelectedColors] = useState<string[]>([])
   const [outputMode, setOutputMode] = useState<'original' | 'transparent' | 'solid'>('original')
   const [outputColor, setOutputColor] = useState('#ffffff')
+  const [batchNote, setBatchNote] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval>>()
 
@@ -99,7 +100,8 @@ export default function ApplyDesignPage() {
     const result = await api.batchRender(
       setId, selectedDesign, colors,
       outputMode !== 'original' ? outputMode : undefined,
-      outputMode === 'solid' ? outputColor : undefined
+      outputMode === 'solid' ? outputColor : undefined,
+      batchNote.trim() || undefined
     )
     setBatchId(result.batchId)
 
@@ -260,6 +262,12 @@ export default function ApplyDesignPage() {
       {/* Step 4: Render */}
       <div className="mb-6">
         <h2 className="text-lg font-semibold mb-3">4. Render Mockups</h2>
+        <input
+          value={batchNote}
+          onChange={(e) => setBatchNote(e.target.value)}
+          placeholder="Batch note (optional), e.g. &quot;Client review round 2&quot;"
+          className="rounded-lg border px-3 py-2 text-sm w-full max-w-md mb-3"
+        />
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={handleRender} disabled={!selectedDesign || rendering}
             className="rounded-lg bg-green-600 px-6 py-2 text-white font-medium hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">

@@ -19,6 +19,7 @@ interface Render {
 interface BatchDetail {
   id: string
   createdAt: string
+  description?: string | null
   mockupSet: { id: string; name: string }
   design: { id: string; name: string; imagePath: string }
   renders: Render[]
@@ -30,12 +31,21 @@ export default function BatchDetailPage() {
   const [batch, setBatch] = useState<BatchDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [descValue, setDescValue] = useState('')
 
   useEffect(() => {
-    api.getBatch(batchId).then(setBatch).catch(() => router.push('/renders')).finally(() => setLoading(false))
+    api.getBatch(batchId).then((b) => { setBatch(b); setDescValue(b.description ?? '') }).catch(() => router.push('/renders')).finally(() => setLoading(false))
   }, [batchId, router])
 
   const completedRenders = batch?.renders.filter((r) => r.status === 'complete') ?? []
+
+  const saveDesc = async () => {
+    setEditingDesc(false)
+    const val = descValue.trim()
+    await api.updateBatch(batchId, { description: val || undefined })
+    setBatch((prev) => prev ? { ...prev, description: val || undefined } : prev)
+  }
 
   const closeLightbox = () => setLightboxIndex(null)
 
@@ -98,6 +108,18 @@ export default function BatchDetailPage() {
               </span>
             )}
           </p>
+          {editingDesc ? (
+            <input value={descValue} onChange={(e) => setDescValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') saveDesc(); if (e.key === 'Escape') setEditingDesc(false) }}
+              onBlur={saveDesc}
+              placeholder="Add a note..."
+              className="text-sm text-gray-500 border-b border-blue-400 outline-none bg-transparent w-full mt-1"
+              autoFocus />
+          ) : (
+            <p className="text-sm text-gray-400 mt-1 cursor-pointer hover:text-gray-600" onClick={() => setEditingDesc(true)}>
+              {batch.description || 'Add a note...'}
+            </p>
+          )}
         </div>
       </div>
 

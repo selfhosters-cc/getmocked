@@ -45,3 +45,22 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return handleAuthError(err)
   }
 }
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ batchId: string }> }) {
+  try {
+    const userId = await requireAuth()
+    const { batchId } = await params
+    const { description } = await req.json()
+
+    const result = await prisma.renderBatch.updateMany({
+      where: { id: batchId, userId },
+      data: { description: description ?? null },
+    })
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    return handleAuthError(err)
+  }
+}
