@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-app = FastAPI(title="Get Mocked - Processing Service")
+app = FastAPI(title="Get Mocked - Image Processing")
 
 
 @app.get("/health")

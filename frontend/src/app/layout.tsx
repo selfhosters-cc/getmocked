@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Get Mocked",
-  description: "Create mockup images with ease",
+  description: "Mockup generator for Etsy POD sellers",
 };
 
 export default function RootLayout({

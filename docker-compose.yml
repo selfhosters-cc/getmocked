@@ -20,13 +20,13 @@ services:
       DATABASE_URL: postgresql://getmocked:getmocked@db:5432/getmocked
       JWT_SECRET: dev-secret-change-me
       PROCESSING_URL: http://processing:5000
-      UPLOAD_DIR: /data/uploads
-      RENDER_DIR: /data/rendered
+      UPLOAD_DIR: /app/uploads
+      RENDER_DIR: /app/rendered
     volumes:
       - ./backend:/app
       - /app/node_modules
-      - uploads:/data/uploads
-      - rendered:/data/rendered
+      - uploads:/app/uploads
+      - rendered:/app/rendered
     depends_on:
       - db
 
@@ -36,8 +36,8 @@ services:
       - "5000:5000"
     volumes:
       - ./processing:/app
-      - uploads:/data/uploads
-      - rendered:/data/rendered
+      - uploads:/app/uploads
+      - rendered:/app/rendered
 
   frontend:
     build: ./frontend
