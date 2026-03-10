@@ -6,6 +6,6 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-RUN npx prisma generate
+RUN test -f prisma/schema.prisma && npx prisma generate || true
 
 CMD ["npm", "run", "dev"]
