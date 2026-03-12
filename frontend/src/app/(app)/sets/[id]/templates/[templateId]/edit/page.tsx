@@ -17,7 +17,9 @@ export default function TemplateEditorPage() {
   const { id: setId, templateId } = useParams<{ id: string; templateId: string }>()
   const router = useRouter()
   const [template, setTemplate] = useState<{
-    id: string; name: string; originalImagePath: string; overlayConfig: OverlayConfig | null
+    id: string; name: string; originalImagePath: string | null;
+    overlayConfig: OverlayConfig | null;
+    templateImage?: { id: string; imagePath: string; thumbnailPath: string | null } | null
   } | null>(null)
   const [config, setConfig] = useState<OverlayConfig | null>(null)
   const [mode, setMode] = useState<'advanced' | 'basic'>('advanced')
@@ -67,6 +69,20 @@ export default function TemplateEditorPage() {
     }
   }
 
+  const handleSaveAsDefault = async () => {
+    if (!config || !template?.templateImage) return
+    await api.updateTemplateImage(template.templateImage.id, {
+      defaultOverlayConfig: {
+        ...config,
+        displacementIntensity: displacement,
+        transparency,
+        curvature,
+        curveAxis,
+        mode,
+      },
+    })
+  }
+
   const handleReset = () => {
     setConfig(null)
     setCurvature(0.0)
@@ -84,9 +100,13 @@ export default function TemplateEditorPage() {
 
   if (!template) return <div>Loading...</div>
 
+  const imageUrl = template.templateImage
+    ? `/uploads/${template.templateImage.imagePath}`
+    : `/uploads/${template.originalImagePath}`
+
   return (
     <div>
-      <h1 className="text-xl font-bold mb-4">Edit Template: {template.name}</h1>
+      <h1 className="text-lg sm:text-xl font-bold mb-4 truncate">Edit Template: {template.name}</h1>
 
       <Toolbar
         mode={mode}
@@ -103,8 +123,14 @@ export default function TemplateEditorPage() {
         onSave={handleSave}
         saving={saving}
       />
+      {template?.templateImage && (
+        <button onClick={handleSaveAsDefault}
+          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 border rounded mb-4">
+          Save as Default
+        </button>
+      )}
 
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <label className="text-sm font-medium">Preview design:</label>
         <select onChange={(e) => handleDesignSelect(e.target.value)}
           className="rounded border px-2 py-1 text-sm" defaultValue="">
@@ -119,7 +145,7 @@ export default function TemplateEditorPage() {
       </div>
 
       <MockupCanvas
-        imageUrl={`/uploads/${template.originalImagePath}`}
+        imageUrl={imageUrl}
         overlayConfig={config}
         previewDesignUrl={selectedDesignUrl ?? undefined}
         transparency={transparency}
@@ -130,7 +156,7 @@ export default function TemplateEditorPage() {
         mode={mode}
       />
 
-      <details className="mt-6 border rounded-lg">
+      <details className="mt-6 mb-8 border rounded-lg">
         <summary className="px-4 py-3 cursor-pointer font-medium text-sm text-gray-700 hover:bg-gray-50">
           Product Mask (for color variants)
         </summary>
@@ -138,7 +164,7 @@ export default function TemplateEditorPage() {
           <MaskEditor
             setId={setId}
             templateId={templateId}
-            imageUrl={`/uploads/${template.originalImagePath}`}
+            imageUrl={imageUrl}
           />
         </div>
       </details>

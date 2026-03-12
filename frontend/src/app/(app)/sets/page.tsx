@@ -7,7 +7,12 @@ import { Plus, Trash2, Image as ImageIcon } from 'lucide-react'
 interface Template {
   id: string
   name: string
-  originalImagePath: string
+  originalImagePath: string | null
+  templateImage?: {
+    id: string
+    imagePath: string
+    thumbnailPath: string | null
+  } | null
 }
 
 interface MockupSet {
@@ -44,10 +49,15 @@ export default function SetsPage() {
             <Link href={`/sets/${set.id}`}>
               {set.templates.length > 0 ? (
                 <div className="grid grid-cols-3 gap-px bg-gray-100">
-                  {set.templates.slice(0, 3).map((t) => (
-                    <img key={t.id} src={`/uploads/${t.originalImagePath}`} alt={t.name}
-                      className="w-full aspect-square object-cover" />
-                  ))}
+                  {set.templates.slice(0, 3).map((t) => {
+                    const imagePath = t.templateImage?.imagePath || t.originalImagePath
+                    const thumbPath = t.templateImage?.thumbnailPath
+                    const src = thumbPath ? `/uploads/${thumbPath}` : imagePath ? `/api/thumbnails/${imagePath}` : ''
+                    return (
+                      <img key={t.id} src={src} alt={t.name}
+                        className="w-full aspect-square object-cover" />
+                    )
+                  })}
                   {set.templates.length < 3 && Array.from({ length: 3 - set.templates.length }).map((_, i) => (
                     <div key={`empty-${i}`} className="w-full aspect-square bg-gray-50" />
                   ))}
