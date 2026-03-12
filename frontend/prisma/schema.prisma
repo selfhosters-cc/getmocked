@@ -13,10 +13,12 @@ model User {
   name         String?
   passwordHash String?      @map("password_hash")
   authProvider String       @default("email") @map("auth_provider")
+  isAdmin      Boolean      @default(false) @map("is_admin")
   createdAt    DateTime     @default(now()) @map("created_at")
   mockupSets    MockupSet[]
   designs       Design[]
   renderBatches RenderBatch[]
+  templateImages TemplateImage[]
 
   @@map("users")
 }
@@ -35,16 +37,35 @@ model MockupSet {
   @@map("mockup_sets")
 }
 
+model TemplateImage {
+  id                   String           @id @default(uuid())
+  userId               String?          @map("user_id")
+  name                 String
+  imagePath            String           @map("image_path")
+  thumbnailPath        String?          @map("thumbnail_path")
+  defaultOverlayConfig Json?            @map("default_overlay_config")
+  defaultMaskPath      String?          @map("default_mask_path")
+  archivedAt           DateTime?        @map("archived_at")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  user                 User?            @relation(fields: [userId], references: [id])
+  templates            MockupTemplate[]
+
+  @@map("template_images")
+}
+
 model MockupTemplate {
-  id               String          @id @default(uuid())
-  mockupSetId      String          @map("mockup_set_id")
-  name             String
-  originalImagePath String         @map("original_image_path")
-  overlayConfig    Json?           @map("overlay_config")
-  sortOrder        Int             @default(0) @map("sort_order")
-  isFavorite       Boolean         @default(false) @map("is_favorite")
-  mockupSet        MockupSet       @relation(fields: [mockupSetId], references: [id], onDelete: Cascade)
-  renderedMockups  RenderedMockup[]
+  id                String          @id @default(uuid())
+  mockupSetId       String          @map("mockup_set_id")
+  templateImageId   String?         @map("template_image_id")
+  name              String
+  originalImagePath String?         @map("original_image_path")
+  overlayConfig     Json?           @map("overlay_config")
+  sortOrder         Int             @default(0) @map("sort_order")
+  isFavorite        Boolean         @default(false) @map("is_favorite")
+  archivedAt        DateTime?       @map("archived_at")
+  mockupSet         MockupSet       @relation(fields: [mockupSetId], references: [id], onDelete: Cascade)
+  templateImage     TemplateImage?  @relation(fields: [templateImageId], references: [id])
+  renderedMockups   RenderedMockup[]
 
   @@map("mockup_templates")
 }
