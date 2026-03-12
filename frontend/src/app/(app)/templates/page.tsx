@@ -5,6 +5,8 @@ import { Upload, Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, ImageO
 import { ImageEditorModal } from '@/components/image-editor-modal'
 import { UploadProgress, UploadItem } from '@/components/upload-progress'
 import { useFileDrop } from '@/hooks/use-file-drop'
+import { TagInput } from '@/components/tag-input'
+import { TagFilter } from '@/components/tag-filter'
 
 interface TemplateImage {
   id: string
@@ -15,6 +17,7 @@ interface TemplateImage {
   renderCount: number
   rating: number
   createdAt: string
+  tags: Array<{ id: string; name: string }>
 }
 
 interface MockupSet {
@@ -41,14 +44,15 @@ export default function TemplatesPage() {
   const [renameValue, setRenameValue] = useState('')
   const [editingImage, setEditingImage] = useState<{ id: string; imagePath: string } | null>(null)
   const [sort, setSort] = useState('newest')
+  const [activeTags, setActiveTags] = useState<string[]>([])
   const [uploads, setUploads] = useState<UploadItem[]>([])
   const fileInput = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const fetchImages = useCallback(async (p: number, q?: string, s?: string) => {
+  const fetchImages = useCallback(async (p: number, q?: string, s?: string, tags?: string[]) => {
     setLoading(true)
     try {
-      const data = await api.getSiteTemplates(p, q || undefined, s)
+      const data = await api.getSiteTemplates(p, q || undefined, s, tags)
       setImages(data.images)
       setTotal(data.total)
       setPage(data.page)
@@ -71,13 +75,13 @@ export default function TemplatesPage() {
         setUploads((prev) => prev.map((item, j) => (j === i ? { ...item, status: 'error', error: 'Upload failed' } : item)))
       }
     }
-    fetchImages(page, search, sort)
-  }, [fetchImages, page, search, sort])
+    fetchImages(page, search, sort, activeTags)
+  }, [fetchImages, page, search, sort, activeTags])
 
   const { isDragging, dropProps } = useFileDrop(uploadFiles)
 
   useEffect(() => {
-    fetchImages(1, undefined, sort)
+    fetchImages(1, undefined, sort, activeTags)
     api.me().then((res) => { const admin = !!res.user?.isAdmin; setIsAdmin(admin); isAdminRef.current = admin }).catch(() => {})
     api.getSets().then(setSets)
   }, [fetchImages, sort])
@@ -87,7 +91,7 @@ export default function TemplatesPage() {
     if (searchTimeout.current) clearTimeout(searchTimeout.current)
     searchTimeout.current = setTimeout(() => {
       setSearch(value)
-      fetchImages(1, value, sort)
+      fetchImages(1, value, sort, activeTags)
     }, 400)
   }
 
@@ -101,7 +105,7 @@ export default function TemplatesPage() {
   const handleArchive = async (id: string) => {
     if (!confirm('Archive this template?')) return
     await api.archiveSiteTemplate(id)
-    fetchImages(page, search, sort)
+    fetchImages(page, search, sort, activeTags)
   }
 
   const handleRename = async (id: string) => {
@@ -114,7 +118,7 @@ export default function TemplatesPage() {
   const handleAddToSet = async (templateImageId: string, setId: string) => {
     await api.addTemplateToSet(setId, templateImageId)
     setAddToSetId(null)
-    fetchImages(page, search, sort)
+    fetchImages(page, search, sort, activeTags)
   }
 
   const totalPages = Math.ceil(total / pageSize)
@@ -135,7 +139,26 @@ export default function TemplatesPage() {
 
   const handleSort = (s: string) => {
     setSort(s)
-    fetchImages(1, search, s)
+    fetchImages(1, search, s, activeTags)
+  }
+
+  const handleTagsChange = (tags: string[]) => {
+    setActiveTags(tags)
+    fetchImages(1, search, sort, tags)
+  }
+
+  const handleAddTag = async (imageId: string, tagName: string) => {
+    const result = await api.addTagToImage(imageId, tagName)
+    setImages((prev) => prev.map((img) =>
+      img.id === imageId ? { ...img, tags: [...img.tags, result.tag] } : img
+    ))
+  }
+
+  const handleRemoveTag = async (imageId: string, tagId: string) => {
+    await api.removeTagFromImage(imageId, tagId)
+    setImages((prev) => prev.map((img) =>
+      img.id === imageId ? { ...img, tags: img.tags.filter((t) => t.id !== tagId) } : img
+    ))
   }
 
   return (
@@ -191,6 +214,8 @@ export default function TemplatesPage() {
           </button>
         ))}
       </div>
+
+      <TagFilter activeTags={activeTags} onTagsChange={handleTagsChange} />
 
       {loading && images.length === 0 ? (
         <div className="flex items-center justify-center py-20 text-gray-400">Loading...</div>
@@ -265,6 +290,16 @@ export default function TemplatesPage() {
                       )
                     ))}
                   </div>
+                  <TagInput
+                    tags={img.tags}
+                    onAdd={(name) => handleAddTag(img.id, name)}
+                    onRemove={(tagId) => handleRemoveTag(img.id, tagId)}
+                    isAdmin={isAdmin}
+                    onAdminArchive={async (tagId) => {
+                      await api.updateTag(tagId, { archive: true })
+                      fetchImages(page, search, sort, activeTags)
+                    }}
+                  />
                 </div>
 
                 {/* Hover actions */}
@@ -343,7 +378,7 @@ export default function TemplatesPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-8">
               <button
-                onClick={() => fetchImages(page - 1, search, sort)}
+                onClick={() => fetchImages(page - 1, search, sort, activeTags)}
                 disabled={page <= 1}
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -353,7 +388,7 @@ export default function TemplatesPage() {
                 Page {page} of {totalPages}
               </span>
               <button
-                onClick={() => fetchImages(page + 1, search, sort)}
+                onClick={() => fetchImages(page + 1, search, sort, activeTags)}
                 disabled={page >= totalPages}
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -368,7 +403,7 @@ export default function TemplatesPage() {
           imageId={editingImage.id}
           imagePath={editingImage.imagePath}
           onClose={() => setEditingImage(null)}
-          onSaved={() => { setEditingImage(null); fetchImages(page, search, sort) }}
+          onSaved={() => { setEditingImage(null); fetchImages(page, search, sort, activeTags) }}
         />
       )}
       <UploadProgress items={uploads} onDismiss={() => setUploads([])} />
