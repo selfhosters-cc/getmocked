@@ -109,11 +109,55 @@ export const api = {
     }),
   toggleRenderFavorite: (renderId: string) =>
     request(`/api/render/${renderId}/favorite`, { method: 'PATCH' }),
-  getFavorites: () => request('/api/favorites'),
+  getFavorites: (renderPage?: number) =>
+    request(`/api/favorites${renderPage ? `?renderPage=${renderPage}` : ''}`),
 
   // Template Renders
   getTemplateRenders: (setId: string, templateId: string, page = 1) =>
     request(`/api/mockup-sets/${setId}/templates/${templateId}/renders?page=${page}`),
+
+  // Template Image Library
+  getTemplateImages: (page = 1) => request(`/api/template-images?page=${page}`),
+  uploadTemplateImage: (file: File, name?: string) => {
+    const form = new FormData()
+    form.append('image', file)
+    if (name) form.append('name', name)
+    return fetch('/api/template-images', {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    }).then((r) => r.json())
+  },
+  getTemplateImage: (id: string) => request(`/api/template-images/${id}`),
+  updateTemplateImage: (id: string, data: { name?: string; defaultOverlayConfig?: unknown; defaultMaskPath?: string }) =>
+    request(`/api/template-images/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  archiveTemplateImage: (id: string) =>
+    request(`/api/template-images/${id}`, { method: 'DELETE' }),
+
+  // Site-wide Templates
+  getSiteTemplates: (page = 1, search?: string) =>
+    request(`/api/template-images/site?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+  uploadSiteTemplate: (file: File, name?: string) => {
+    const form = new FormData()
+    form.append('image', file)
+    if (name) form.append('name', name)
+    return fetch('/api/template-images/site', {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    }).then((r) => r.json())
+  },
+  updateSiteTemplate: (id: string, data: { name?: string; defaultOverlayConfig?: unknown }) =>
+    request(`/api/template-images/site/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  archiveSiteTemplate: (id: string) =>
+    request(`/api/template-images/site/${id}`, { method: 'DELETE' }),
+
+  // Add template to set from library
+  addTemplateToSet: (setId: string, templateImageId: string, name?: string) =>
+    request(`/api/mockup-sets/${setId}/templates`, {
+      method: 'POST',
+      body: JSON.stringify({ templateImageId, name }),
+    }),
 
   // Dashboard
   getDashboard: () => request('/api/dashboard'),
