@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/server/prisma'
 import { requireAuth, handleAuthError } from '@/lib/server/auth'
-import { deleteFile } from '@/lib/server/storage'
 
 const overlayConfigSchema = z.object({
   corners: z.array(z.object({ x: z.number(), y: z.number() })).length(4),
@@ -67,15 +66,13 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Set not found' }, { status: 404 })
     }
 
-    const template = await prisma.mockupTemplate.findFirst({
-      where: { id: templateId, mockupSetId: set.id },
+    const result = await prisma.mockupTemplate.updateMany({
+      where: { id: templateId, mockupSetId: set.id, archivedAt: null },
+      data: { archivedAt: new Date() },
     })
-    if (!template) {
+    if (result.count === 0) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 })
     }
-
-    await deleteFile(template.originalImagePath)
-    await prisma.mockupTemplate.delete({ where: { id: template.id } })
     return NextResponse.json({ ok: true })
   } catch (err) {
     return handleAuthError(err)

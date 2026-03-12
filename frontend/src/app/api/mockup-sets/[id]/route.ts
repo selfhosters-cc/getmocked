@@ -20,7 +20,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params
     const set = await prisma.mockupSet.findFirst({
       where: { id, userId },
-      include: { templates: { orderBy: { sortOrder: 'asc' } } },
+      include: {
+        templates: {
+          where: { archivedAt: null },
+          orderBy: { sortOrder: 'asc' },
+          include: { templateImage: true },
+        },
+      },
     })
     if (!set) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })

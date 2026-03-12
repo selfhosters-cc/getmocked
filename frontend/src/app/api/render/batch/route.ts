@@ -13,7 +13,13 @@ export async function POST(req: NextRequest) {
 
     const set = await prisma.mockupSet.findFirst({
       where: { id: mockupSetId, userId },
-      include: { templates: { orderBy: { sortOrder: 'asc' } } },
+      include: {
+        templates: {
+          where: { archivedAt: null },
+          orderBy: { sortOrder: 'asc' },
+          include: { templateImage: true },
+        },
+      },
     })
     if (!set) {
       return NextResponse.json({ error: 'Mockup set not found' }, { status: 404 })
@@ -75,20 +81,23 @@ export async function POST(req: NextRequest) {
 }
 
 async function processRender(
-  template: { id: string; originalImagePath: string; overlayConfig: unknown },
+  template: { id: string; originalImagePath: string | null; overlayConfig: unknown; templateImage?: { id: string; imagePath: string; defaultMaskPath: string | null } | null },
   design: { id: string; imagePath: string },
   renderId: string,
   renderOptions?: { tintColor: string | null; outputMode: string | null; outputColor: string | null }
 ) {
   await prisma.renderedMockup.update({ where: { id: renderId }, data: { status: 'processing' } })
 
+  const imagePath = template.templateImage?.imagePath || template.originalImagePath
+  if (!imagePath) throw new Error('No image path available for template')
+
   // Merge render options into overlay config for processing service
   const overlayConfig = { ...(template.overlayConfig as Record<string, unknown>) }
   if (renderOptions?.tintColor) {
     overlayConfig.tintColor = renderOptions.tintColor
-    // Derive mask path from template image path (replace extension with _mask.png)
-    const templatePath = getUploadPath(template.originalImagePath)
-    const maskPath = templatePath.replace(/\.[^.]+$/, '_mask.png')
+    const maskPath = template.templateImage?.defaultMaskPath
+      ? getUploadPath(template.templateImage.defaultMaskPath)
+      : getUploadPath(imagePath).replace(/\.[^.]+$/, '_mask.png')
     overlayConfig.maskPath = maskPath
   }
   if (renderOptions?.outputMode) {
@@ -102,7 +111,7 @@ async function processRender(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      templateImagePath: getUploadPath(template.originalImagePath),
+      templateImagePath: getUploadPath(imagePath),
       designImagePath: getUploadPath(design.imagePath),
       overlayConfig,
       outputDir: getRenderPath(`${design.id}`),
