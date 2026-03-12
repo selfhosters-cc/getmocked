@@ -27,6 +27,7 @@ export async function generateThumbnail(
   }
 
   await sharp(absoluteOriginal)
+    .rotate()
     .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'inside', withoutEnlargement: true })
     .toFile(absoluteThumb)
 
