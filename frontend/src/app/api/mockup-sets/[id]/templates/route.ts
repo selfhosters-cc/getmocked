@@ -74,7 +74,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         mockupSetId: set.id,
         templateImageId: templateImage.id,
         name,
-        originalImagePath: imagePath,
         sortOrder: count,
       },
       include: { templateImage: true },

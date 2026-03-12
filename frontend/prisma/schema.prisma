@@ -54,18 +54,17 @@ model TemplateImage {
 }
 
 model MockupTemplate {
-  id                String          @id @default(uuid())
-  mockupSetId       String          @map("mockup_set_id")
-  templateImageId   String?         @map("template_image_id")
-  name              String
-  originalImagePath String?         @map("original_image_path")
-  overlayConfig     Json?           @map("overlay_config")
-  sortOrder         Int             @default(0) @map("sort_order")
-  isFavorite        Boolean         @default(false) @map("is_favorite")
-  archivedAt        DateTime?       @map("archived_at")
-  mockupSet         MockupSet       @relation(fields: [mockupSetId], references: [id], onDelete: Cascade)
-  templateImage     TemplateImage?  @relation(fields: [templateImageId], references: [id])
-  renderedMockups   RenderedMockup[]
+  id              String          @id @default(uuid())
+  mockupSetId     String          @map("mockup_set_id")
+  templateImageId String          @map("template_image_id")
+  name            String
+  overlayConfig   Json?           @map("overlay_config")
+  sortOrder       Int             @default(0) @map("sort_order")
+  isFavorite      Boolean         @default(false) @map("is_favorite")
+  archivedAt      DateTime?       @map("archived_at")
+  mockupSet       MockupSet       @relation(fields: [mockupSetId], references: [id], onDelete: Cascade)
+  templateImage   TemplateImage   @relation(fields: [templateImageId], references: [id])
+  renderedMockups RenderedMockup[]
 
   @@map("mockup_templates")
 }

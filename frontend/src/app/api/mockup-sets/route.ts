@@ -13,7 +13,7 @@ export async function GET() {
     const userId = await requireAuth()
     const sets = await prisma.mockupSet.findMany({
       where: { userId },
-      include: { templates: { select: { id: true, name: true, originalImagePath: true, sortOrder: true } } },
+      include: { templates: { select: { id: true, name: true, sortOrder: true, templateImage: { select: { imagePath: true, thumbnailPath: true } } } } },
       orderBy: { createdAt: 'desc' },
     })
     return NextResponse.json(sets)

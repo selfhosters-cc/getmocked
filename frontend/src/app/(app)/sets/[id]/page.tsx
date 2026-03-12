@@ -23,11 +23,10 @@ interface TemplateOverlayConfig {
 interface Template {
   id: string
   name: string
-  originalImagePath: string | null
   overlayConfig: TemplateOverlayConfig | null
   sortOrder: number
   isFavorite?: boolean
-  templateImage?: {
+  templateImage: {
     id: string
     imagePath: string
     thumbnailPath: string | null
@@ -50,8 +49,8 @@ interface MockupSet {
 function TemplateCard({ template: t, setId, onDelete, onToggleFavorite }: { template: Template; setId: string; onDelete: () => void; onToggleFavorite: () => void }) {
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null)
 
-  const imagePath = t.templateImage?.imagePath || t.originalImagePath
-  const thumbnailPath = t.templateImage?.thumbnailPath
+  const imagePath = t.templateImage.imagePath
+  const thumbnailPath = t.templateImage.thumbnailPath
   const thumbnailUrl = thumbnailPath ? `/uploads/${thumbnailPath}` : imagePath ? `/api/thumbnails/${imagePath}` : ''
   const fullImageUrl = imagePath ? `/uploads/${imagePath}` : ''
 

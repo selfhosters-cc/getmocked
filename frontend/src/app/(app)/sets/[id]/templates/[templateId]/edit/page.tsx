@@ -17,9 +17,9 @@ export default function TemplateEditorPage() {
   const { id: setId, templateId } = useParams<{ id: string; templateId: string }>()
   const router = useRouter()
   const [template, setTemplate] = useState<{
-    id: string; name: string; originalImagePath: string | null;
+    id: string; name: string;
     overlayConfig: OverlayConfig | null;
-    templateImage?: { id: string; imagePath: string; thumbnailPath: string | null } | null
+    templateImage: { id: string; imagePath: string; thumbnailPath: string | null }
   } | null>(null)
   const [config, setConfig] = useState<OverlayConfig | null>(null)
   const [mode, setMode] = useState<'advanced' | 'basic'>('advanced')
@@ -100,9 +100,7 @@ export default function TemplateEditorPage() {
 
   if (!template) return <div>Loading...</div>
 
-  const imageUrl = template.templateImage
-    ? `/uploads/${template.templateImage.imagePath}`
-    : `/uploads/${template.originalImagePath}`
+  const imageUrl = `/uploads/${template.templateImage.imagePath}`
 
   return (
     <div>
