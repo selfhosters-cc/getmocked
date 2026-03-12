@@ -50,8 +50,29 @@ model TemplateImage {
   createdAt            DateTime         @default(now()) @map("created_at")
   user                 User?            @relation(fields: [userId], references: [id])
   templates            MockupTemplate[]
+  tags                 TemplateImageTag[]
 
   @@map("template_images")
+}
+
+model Tag {
+  id         String             @id @default(uuid())
+  name       String             @unique
+  archivedAt DateTime?          @map("archived_at")
+  createdAt  DateTime           @default(now()) @map("created_at")
+  images     TemplateImageTag[]
+
+  @@map("tags")
+}
+
+model TemplateImageTag {
+  templateImageId String        @map("template_image_id")
+  tagId           String        @map("tag_id")
+  templateImage   TemplateImage @relation(fields: [templateImageId], references: [id], onDelete: Cascade)
+  tag             Tag           @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([templateImageId, tagId])
+  @@map("template_image_tags")
 }
 
 model MockupTemplate {
