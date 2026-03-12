@@ -1,9 +1,10 @@
 'use client'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import { Upload, Trash2, Settings, Play, Plus, X, Pencil, Check, Heart, ImageDown } from 'lucide-react'
+import { TemplatePickerModal } from '@/components/template-picker-modal'
 
 interface OverlayCorner {
   x: number
@@ -22,10 +23,15 @@ interface TemplateOverlayConfig {
 interface Template {
   id: string
   name: string
-  originalImagePath: string
+  originalImagePath: string | null
   overlayConfig: TemplateOverlayConfig | null
   sortOrder: number
   isFavorite?: boolean
+  templateImage?: {
+    id: string
+    imagePath: string
+    thumbnailPath: string | null
+  }
 }
 
 interface ColorVariant {
@@ -42,13 +48,12 @@ interface MockupSet {
 }
 
 function TemplateCard({ template: t, setId, onDelete, onToggleFavorite }: { template: Template; setId: string; onDelete: () => void; onToggleFavorite: () => void }) {
-  const imgRef = useRef<HTMLImageElement>(null)
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null)
 
-  const onLoad = useCallback(() => {
-    const img = imgRef.current
-    if (img) setImgSize({ w: img.naturalWidth, h: img.naturalHeight })
-  }, [])
+  const imagePath = t.templateImage?.imagePath || t.originalImagePath
+  const thumbnailPath = t.templateImage?.thumbnailPath
+  const thumbnailUrl = thumbnailPath ? `/uploads/${thumbnailPath}` : imagePath ? `/api/thumbnails/${imagePath}` : ''
+  const fullImageUrl = imagePath ? `/uploads/${imagePath}` : ''
 
   const corners = t.overlayConfig?.corners
   const displacement = t.overlayConfig?.displacementIntensity
@@ -58,8 +63,15 @@ function TemplateCard({ template: t, setId, onDelete, onToggleFavorite }: { temp
   return (
     <div className="group relative rounded-xl border bg-white overflow-hidden">
       <div className="relative aspect-square">
-        <img ref={imgRef} src={`/uploads/${t.originalImagePath}`}
-          alt={t.name} className="w-full h-full object-cover" onLoad={onLoad} />
+        <img src={thumbnailUrl}
+          alt={t.name} className="w-full h-full object-cover" onLoad={() => {
+            // Load the full image to get natural dimensions for SVG overlay
+            if (fullImageUrl) {
+              const fullImg = new Image()
+              fullImg.onload = () => setImgSize({ w: fullImg.naturalWidth, h: fullImg.naturalHeight })
+              fullImg.src = fullImageUrl
+            }
+          }} />
         {corners && corners.length === 4 && imgSize && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none"
             viewBox={`0 0 ${imgSize.w} ${imgSize.h}`} preserveAspectRatio="xMidYMid slice">
@@ -169,7 +181,7 @@ function ColorVariantManager({ setId, variants, onUpdate }: { setId: string; var
 export default function SetDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [set, setSet] = useState<MockupSet | null>(null)
-  const fileInput = useRef<HTMLInputElement>(null)
+  const [showPicker, setShowPicker] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [editingDesc, setEditingDesc] = useState(false)
   const [nameValue, setNameValue] = useState('')
@@ -218,15 +230,6 @@ export default function SetDetailPage() {
   useEffect(() => {
     api.getSet(id).then(setSet)
   }, [id])
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
-    for (const file of Array.from(files)) {
-      await api.uploadTemplate(id, file)
-    }
-    api.getSet(id).then(setSet)
-  }
 
   const handleToggleFavorite = async (templateId: string, current: boolean) => {
     await api.toggleTemplateFavorite(id, templateId, !current)
@@ -300,11 +303,10 @@ export default function SetDetailPage() {
             className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white font-medium hover:bg-green-700 text-sm sm:text-base">
             <Play size={18} /> Apply Design
           </Link>
-          <button onClick={() => fileInput.current?.click()}
+          <button onClick={() => setShowPicker(true)}
             className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700 text-sm sm:text-base">
-            <Upload size={18} /> Add Photos
+            <Upload size={18} /> Add Templates
           </button>
-          <input ref={fileInput} type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
         </div>
       </div>
 
@@ -325,6 +327,14 @@ export default function SetDetailPage() {
 
       <ColorVariantManager setId={id} variants={set.colorVariants ?? []}
         onUpdate={() => api.getSet(id).then(setSet)} />
+
+      {showPicker && (
+        <TemplatePickerModal
+          setId={id}
+          onClose={() => setShowPicker(false)}
+          onAdded={() => api.getSet(id).then(setSet)}
+        />
+      )}
     </div>
   )
 }
