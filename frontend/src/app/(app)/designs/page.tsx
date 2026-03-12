@@ -1,7 +1,9 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { Upload, Trash2 } from 'lucide-react'
+import { UploadProgress, UploadItem } from '@/components/upload-progress'
+import { useFileDrop } from '@/hooks/use-file-drop'
 
 interface Design {
   id: string
@@ -12,19 +14,39 @@ interface Design {
 
 export default function DesignsPage() {
   const [designs, setDesigns] = useState<Design[]>([])
+  const [uploads, setUploads] = useState<UploadItem[]>([])
   const fileInput = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
+  const fetchDesigns = useCallback(() => {
     api.getDesigns().then(setDesigns)
   }, [])
 
+  useEffect(() => {
+    fetchDesigns()
+  }, [fetchDesigns])
+
+  const uploadFiles = useCallback(async (files: File[]) => {
+    const items: UploadItem[] = files.map((f) => ({ name: f.name, status: 'pending' }))
+    setUploads(items)
+    for (let i = 0; i < files.length; i++) {
+      setUploads((prev) => prev.map((item, j) => (j === i ? { ...item, status: 'uploading' } : item)))
+      try {
+        await api.uploadDesign(files[i])
+        setUploads((prev) => prev.map((item, j) => (j === i ? { ...item, status: 'done' } : item)))
+      } catch {
+        setUploads((prev) => prev.map((item, j) => (j === i ? { ...item, status: 'error', error: 'Upload failed' } : item)))
+      }
+    }
+    fetchDesigns()
+  }, [fetchDesigns])
+
+  const { isDragging, dropProps } = useFileDrop(uploadFiles)
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files) return
-    for (const file of Array.from(files)) {
-      const design = await api.uploadDesign(file)
-      setDesigns((prev) => [design, ...prev])
-    }
+    if (!files || files.length === 0) return
+    if (fileInput.current) fileInput.current.value = ''
+    uploadFiles(Array.from(files))
   }
 
   const handleDelete = async (id: string) => {
@@ -34,7 +56,15 @@ export default function DesignsPage() {
   }
 
   return (
-    <div>
+    <div {...dropProps} className="relative">
+      {isDragging && (
+        <div className="fixed inset-0 bg-blue-500/10 border-4 border-dashed border-blue-400 rounded-xl z-40 flex items-center justify-center pointer-events-none">
+          <div className="bg-white rounded-xl px-8 py-6 shadow-lg text-center">
+            <Upload size={32} className="mx-auto text-blue-500 mb-2" />
+            <p className="text-lg font-medium text-blue-700">Drop designs to upload</p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold">My Designs</h1>
         <button onClick={() => fileInput.current?.click()}
@@ -59,6 +89,7 @@ export default function DesignsPage() {
           </div>
         ))}
       </div>
+      <UploadProgress items={uploads} onDismiss={() => setUploads([])} />
     </div>
   )
 }

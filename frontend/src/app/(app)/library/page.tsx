@@ -4,6 +4,8 @@ import { api } from '@/lib/api'
 import Link from 'next/link'
 import { Upload, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, ImageOff, Check, X, Crop, Star } from 'lucide-react'
 import { ImageEditorModal } from '@/components/image-editor-modal'
+import { UploadProgress, UploadItem } from '@/components/upload-progress'
+import { useFileDrop } from '@/hooks/use-file-drop'
 
 interface TemplateLink {
   templateId: string
@@ -43,6 +45,7 @@ export default function LibraryPage() {
   const [renameValue, setRenameValue] = useState('')
   const [editingImage, setEditingImage] = useState<{ id: string; imagePath: string } | null>(null)
   const [sort, setSort] = useState('newest')
+  const [uploads, setUploads] = useState<UploadItem[]>([])
   const fileInput = useRef<HTMLInputElement>(null)
 
   const fetchImages = useCallback(async (p: number, s?: string) => {
@@ -58,6 +61,23 @@ export default function LibraryPage() {
     }
   }, [])
 
+  const uploadFiles = useCallback(async (files: File[]) => {
+    const items: UploadItem[] = files.map((f) => ({ name: f.name, status: 'pending' }))
+    setUploads(items)
+    for (let i = 0; i < files.length; i++) {
+      setUploads((prev) => prev.map((item, j) => (j === i ? { ...item, status: 'uploading' } : item)))
+      try {
+        await api.uploadTemplateImage(files[i])
+        setUploads((prev) => prev.map((item, j) => (j === i ? { ...item, status: 'done' } : item)))
+      } catch {
+        setUploads((prev) => prev.map((item, j) => (j === i ? { ...item, status: 'error', error: 'Upload failed' } : item)))
+      }
+    }
+    fetchImages(page, sort)
+  }, [fetchImages, page, sort])
+
+  const { isDragging, dropProps } = useFileDrop(uploadFiles)
+
   useEffect(() => {
     fetchImages(1, sort)
     api.getSets().then(setSets)
@@ -65,12 +85,9 @@ export default function LibraryPage() {
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files) return
-    for (const file of Array.from(files)) {
-      await api.uploadTemplateImage(file)
-    }
+    if (!files || files.length === 0) return
     if (fileInput.current) fileInput.current.value = ''
-    fetchImages(page, sort)
+    uploadFiles(Array.from(files))
   }
 
   const handleArchive = async (id: string) => {
@@ -115,7 +132,15 @@ export default function LibraryPage() {
   }
 
   return (
-    <div>
+    <div {...dropProps} className="relative">
+      {isDragging && (
+        <div className="fixed inset-0 bg-blue-500/10 border-4 border-dashed border-blue-400 rounded-xl z-40 flex items-center justify-center pointer-events-none">
+          <div className="bg-white rounded-xl px-8 py-6 shadow-lg text-center">
+            <Upload size={32} className="mx-auto text-blue-500 mb-2" />
+            <p className="text-lg font-medium text-blue-700">Drop images to upload</p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">My Library</h1>
@@ -315,6 +340,7 @@ export default function LibraryPage() {
           onSaved={() => { setEditingImage(null); fetchImages(page, sort) }}
         />
       )}
+      <UploadProgress items={uploads} onDismiss={() => setUploads([])} />
     </div>
   )
 }
