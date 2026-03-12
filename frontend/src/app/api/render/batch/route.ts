@@ -81,20 +81,21 @@ export async function POST(req: NextRequest) {
 }
 
 async function processRender(
-  template: { id: string; overlayConfig: unknown; templateImage: { id: string; imagePath: string; defaultMaskPath: string | null } },
+  template: { id: string; overlayConfig: unknown; templateImage?: { id: string; imagePath: string; defaultMaskPath: string | null } | null },
   design: { id: string; imagePath: string },
   renderId: string,
   renderOptions?: { tintColor: string | null; outputMode: string | null; outputColor: string | null }
 ) {
   await prisma.renderedMockup.update({ where: { id: renderId }, data: { status: 'processing' } })
 
-  const imagePath = template.templateImage.imagePath
+  const imagePath = template.templateImage?.imagePath
+  if (!imagePath) throw new Error('No image path available for template')
 
   // Merge render options into overlay config for processing service
   const overlayConfig = { ...(template.overlayConfig as Record<string, unknown>) }
   if (renderOptions?.tintColor) {
     overlayConfig.tintColor = renderOptions.tintColor
-    const maskPath = template.templateImage.defaultMaskPath
+    const maskPath = template.templateImage?.defaultMaskPath
       ? getUploadPath(template.templateImage.defaultMaskPath)
       : getUploadPath(imagePath).replace(/\.[^.]+$/, '_mask.png')
     overlayConfig.maskPath = maskPath

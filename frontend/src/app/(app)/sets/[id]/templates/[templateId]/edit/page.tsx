@@ -100,7 +100,9 @@ export default function TemplateEditorPage() {
 
   if (!template) return <div>Loading...</div>
 
-  const imageUrl = `/uploads/${template.templateImage.imagePath}`
+  const imageUrl = template.templateImage
+    ? `/uploads/${template.templateImage.imagePath}`
+    : ''
 
   return (
     <div>

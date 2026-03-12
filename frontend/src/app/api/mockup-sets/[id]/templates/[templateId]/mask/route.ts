@@ -23,6 +23,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     })
     if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 })
 
+    if (!template.templateImage) return NextResponse.json({ error: 'No image linked' }, { status: 400 })
     const imagePath = getUploadPath(template.templateImage.imagePath)
     const response = await fetch(`${PROCESSING_URL}/detect-mask`, {
       method: 'POST',
@@ -56,6 +57,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       include: { templateImage: true },
     })
     if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+
+    if (!template.templateImage) return NextResponse.json({ error: 'No image linked' }, { status: 400 })
 
     const { maskPath, strokes } = await req.json()
     const absMaskPath = path.join(path.resolve(UPLOAD_DIR), maskPath)
