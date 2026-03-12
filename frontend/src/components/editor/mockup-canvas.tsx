@@ -58,9 +58,12 @@ export function MockupCanvas({
 
   useEffect(() => {
     if (!image || !containerRef.current) return
-    const containerWidth = containerRef.current.clientWidth
-    const s = Math.min(1, containerWidth / image.width)
-    setScale(s)
+    const ro = new ResizeObserver((entries) => {
+      const width = entries[0].contentRect.width
+      setScale(Math.min(1, width / image.width))
+    })
+    ro.observe(containerRef.current)
+    return () => ro.disconnect()
   }, [image])
 
   const render = useCallback(() => {
@@ -82,28 +85,30 @@ export function MockupCanvas({
 
   useEffect(() => { render() }, [render])
 
-  const getMousePos = (e: React.MouseEvent): Point => {
+  const getEventPos = (e: React.MouseEvent | React.TouchEvent): Point => {
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
-    return { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale }
+    const clientX = 'touches' in e ? (e.touches[0]?.clientX ?? e.changedTouches[0].clientX) : e.clientX
+    const clientY = 'touches' in e ? (e.touches[0]?.clientY ?? e.changedTouches[0].clientY) : e.clientY
+    return { x: (clientX - rect.left) / scale, y: (clientY - rect.top) / scale }
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
     if (showPreview) return
-    const pos = getMousePos(e)
-    const idx = findClosestCorner(corners, pos, 20 / scale)
+    const pos = getEventPos(e)
+    const idx = findClosestCorner(corners, pos, 30 / scale)
     if (idx >= 0) setDragging(idx)
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (dragging < 0) return
-    const pos = getMousePos(e)
+    const pos = getEventPos(e)
     const newCorners = [...corners]
     newCorners[dragging] = pos
     setCorners(newCorners)
   }
 
-  const handleMouseUp = () => {
+  const handlePointerUp = () => {
     if (dragging >= 0) {
       onConfigChange({
         corners, displacementIntensity: overlayConfig?.displacementIntensity ?? 0.5,
@@ -132,10 +137,14 @@ export function MockupCanvas({
       </div>
       <canvas
         ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseDown={handlePointerDown}
+        onMouseMove={handlePointerMove}
+        onMouseUp={handlePointerUp}
+        onMouseLeave={handlePointerUp}
+        onTouchStart={(e) => { e.preventDefault(); handlePointerDown(e) }}
+        onTouchMove={(e) => { e.preventDefault(); handlePointerMove(e) }}
+        onTouchEnd={handlePointerUp}
+        style={{ touchAction: 'none' }}
         className={`rounded-lg border shadow-sm ${showPreview ? 'cursor-default' : 'cursor-crosshair'}`}
       />
     </div>

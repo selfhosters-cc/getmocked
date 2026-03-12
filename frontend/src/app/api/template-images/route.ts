@@ -11,46 +11,72 @@ export async function GET(req: NextRequest) {
   try {
     const userId = await requireAuth()
     const page = parseInt(req.nextUrl.searchParams.get('page') || '1')
-    const offset = (page - 1) * PAGE_SIZE
+    const sort = req.nextUrl.searchParams.get('sort') || 'newest'
+    const where = { userId, archivedAt: null }
 
-    const [images, total] = await Promise.all([
-      prisma.templateImage.findMany({
-        where: { userId, archivedAt: null },
-        orderBy: { createdAt: 'desc' },
-        skip: offset,
-        take: PAGE_SIZE,
-        include: {
-          _count: {
-            select: {
-              templates: { where: { archivedAt: null } },
-            },
-          },
+    // For computed sorts (renders, sets), fetch all IDs, sort, then paginate
+    const needsComputedSort = ['most_renders', 'most_sets'].includes(sort)
+
+    // Column-based orderBy
+    const orderBy =
+      sort === 'oldest' ? { createdAt: 'asc' as const }
+      : sort === 'name_asc' ? { name: 'asc' as const }
+      : sort === 'name_desc' ? { name: 'desc' as const }
+      : sort === 'top_rated' ? { rating: 'desc' as const }
+      : { createdAt: 'desc' as const }
+
+    const allImages = await prisma.templateImage.findMany({
+      where,
+      orderBy: needsComputedSort ? { createdAt: 'desc' } : orderBy,
+      ...(needsComputedSort ? {} : { skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+      include: {
+        _count: {
+          select: { templates: { where: { archivedAt: null } } },
         },
-      }),
-      prisma.templateImage.count({ where: { userId, archivedAt: null } }),
-    ])
+      },
+    })
 
-    // Get render counts via templates
-    const imageIds = images.map((i) => i.id)
+    const total = needsComputedSort
+      ? allImages.length
+      : await prisma.templateImage.count({ where })
+
+    // Get render counts and template links for all fetched images
+    const imageIds = allImages.map((i) => i.id)
     const templatesForImages = await prisma.mockupTemplate.findMany({
-      where: { templateImageId: { in: imageIds } },
-      select: { id: true, templateImageId: true, _count: { select: { renderedMockups: true } } },
+      where: { templateImageId: { in: imageIds }, archivedAt: null },
+      select: { id: true, templateImageId: true, mockupSetId: true, _count: { select: { renderedMockups: true } } },
     })
 
     const renderCountByImage = new Map<string, number>()
+    const templatesByImage = new Map<string, { templateId: string; setId: string; renderCount: number }[]>()
     for (const t of templatesForImages) {
       if (t.templateImageId) {
         renderCountByImage.set(t.templateImageId, (renderCountByImage.get(t.templateImageId) || 0) + t._count.renderedMockups)
+        const list = templatesByImage.get(t.templateImageId) || []
+        list.push({ templateId: t.id, setId: t.mockupSetId, renderCount: t._count.renderedMockups })
+        templatesByImage.set(t.templateImageId, list)
       }
     }
 
-    const result = images.map((img) => ({
+    let enriched = allImages.map((img) => ({
       ...img,
       setCount: img._count.templates,
       renderCount: renderCountByImage.get(img.id) || 0,
+      templateLinks: templatesByImage.get(img.id) || [],
     }))
 
-    return NextResponse.json({ images: result, total, page, pageSize: PAGE_SIZE })
+    // Apply computed sorts and paginate
+    if (sort === 'most_renders') {
+      enriched.sort((a, b) => b.renderCount - a.renderCount)
+    } else if (sort === 'most_sets') {
+      enriched.sort((a, b) => b.setCount - a.setCount)
+    }
+
+    if (needsComputedSort) {
+      enriched = enriched.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    }
+
+    return NextResponse.json({ images: enriched, total, page, pageSize: PAGE_SIZE })
   } catch (err) {
     return handleAuthError(err)
   }

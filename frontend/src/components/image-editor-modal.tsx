@@ -315,7 +315,10 @@ export function ImageEditorModal({ imageId, imagePath, onClose, onSaved }: Image
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col m-4"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-bold">Edit Image</h2>
+          <div>
+            <h2 className="text-lg font-bold">Edit Image</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Changes will be saved as a new template — the original stays in your library.</p>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
         </div>
 
@@ -380,7 +383,7 @@ export function ImageEditorModal({ imageId, imagePath, onClose, onSaved }: Image
           </button>
           <button onClick={handleApply} disabled={!hasChanges || saving}
             className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40">
-            {saving ? 'Applying...' : 'Apply'}
+            {saving ? 'Saving...' : 'Save as New Template'}
           </button>
         </div>
       </div>

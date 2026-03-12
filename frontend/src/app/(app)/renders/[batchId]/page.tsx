@@ -3,7 +3,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import { Loader2, Download, X, ChevronLeft, ChevronRight, ArrowLeft, Heart } from 'lucide-react'
+import { Loader2, Download, X, ChevronLeft, ChevronRight, ArrowLeft, Heart, RefreshCw } from 'lucide-react'
+import { RemixModal, RemixRender } from '@/components/remix-modal'
 
 interface OverlaySettings {
   displacementIntensity?: number
@@ -14,7 +15,8 @@ interface Render {
   id: string
   status: string
   isFavorite?: boolean
-  mockupTemplate: { name: string; overlayConfig?: OverlaySettings | null }
+  renderOptions?: { tintColor?: string; outputMode?: string; outputColor?: string }
+  mockupTemplate: { id: string; name: string; overlayConfig?: OverlaySettings | null }
 }
 
 interface BatchDetail {
@@ -34,6 +36,7 @@ export default function BatchDetailPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [editingDesc, setEditingDesc] = useState(false)
   const [descValue, setDescValue] = useState('')
+  const [remixRender, setRemixRender] = useState<Render | null>(null)
 
   useEffect(() => {
     api.getBatch(batchId).then((b) => { setBatch(b); setDescValue(b.description ?? '') }).catch(() => router.push('/renders')).finally(() => setLoading(false))
@@ -51,6 +54,10 @@ export default function BatchDetailPage() {
     const val = descValue.trim()
     await api.updateBatch(batchId, { description: val || undefined })
     setBatch((prev) => prev ? { ...prev, description: val || undefined } : prev)
+  }
+
+  const handleRemixRendered = () => {
+    api.getBatch(batchId).then((b) => { setBatch(b); setDescValue(b.description ?? '') })
   }
 
   const closeLightbox = () => setLightboxIndex(null)
@@ -178,11 +185,18 @@ export default function BatchDetailPage() {
                   <Heart size={14} className={r.isFavorite ? 'fill-pink-500 text-pink-500' : 'text-gray-400'} />
                 </button>
                 {r.status === 'complete' && (
-                  <a href={api.getDownloadUrl(r.id)} download
-                    className="shrink-0 ml-2 p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-                    title="Download">
-                    <Download size={14} />
-                  </a>
+                  <>
+                    <a href={api.getDownloadUrl(r.id)} download
+                      className="shrink-0 ml-2 p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                      title="Download">
+                      <Download size={14} />
+                    </a>
+                    <button onClick={() => setRemixRender(r)}
+                      className="shrink-0 ml-1 p-1.5 rounded-full hover:bg-blue-50 text-gray-500 hover:text-blue-600"
+                      title="Remix">
+                      <RefreshCw size={14} />
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -218,6 +232,10 @@ export default function BatchDetailPage() {
               className="text-blue-400 hover:text-blue-300 flex items-center gap-1">
               <Download size={14} /> Download
             </a>
+            <button onClick={(e) => { e.stopPropagation(); setRemixRender(completedRenders[lightboxIndex]); closeLightbox() }}
+              className="text-blue-400 hover:text-blue-300 flex items-center gap-1">
+              <RefreshCw size={14} /> Remix
+            </button>
           </div>
 
           {lightboxIndex > 0 && (
@@ -241,6 +259,17 @@ export default function BatchDetailPage() {
             onClick={(e) => e.stopPropagation()}
           />
         </div>
+      )}
+      {remixRender && batch && (
+        <RemixModal
+          render={remixRender as RemixRender}
+          setId={batch.mockupSet.id}
+          designId={batch.design.id}
+          designImagePath={batch.design.imagePath}
+          batchId={batch.id}
+          onClose={() => setRemixRender(null)}
+          onRendered={handleRemixRendered}
+        />
       )}
     </div>
   )

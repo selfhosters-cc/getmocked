@@ -65,6 +65,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.name !== undefined) data.name = body.name
     if (body.defaultOverlayConfig !== undefined) data.defaultOverlayConfig = body.defaultOverlayConfig
     if (body.defaultMaskPath !== undefined) data.defaultMaskPath = body.defaultMaskPath
+    if (body.rating !== undefined) data.rating = Math.max(0, Math.min(5, parseInt(body.rating) || 0))
 
     const updated = await prisma.templateImage.update({ where: { id }, data })
     return NextResponse.json(updated)

@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ bat
         mockupSet: { select: { id: true, name: true } },
         design: { select: { id: true, name: true, imagePath: true } },
         renders: {
-          include: { mockupTemplate: { select: { name: true, overlayConfig: true } } },
+          include: { mockupTemplate: { select: { id: true, name: true, overlayConfig: true } } },
           orderBy: { createdAt: 'asc' },
         },
       },

@@ -67,12 +67,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       thumbnailPath = await generateThumbnail(UPLOAD_DIR, newRelativePath)
     } catch { /* lazy fallback */ }
 
-    const updated = await prisma.templateImage.update({
-      where: { id },
-      data: { imagePath: newRelativePath, thumbnailPath },
+    // Create a new TemplateImage (original stays untouched)
+    const newImage = await prisma.templateImage.create({
+      data: {
+        userId,
+        name: `${image.name} (edited)`,
+        imagePath: newRelativePath,
+        thumbnailPath,
+      },
     })
 
-    return NextResponse.json(updated)
+    return NextResponse.json(newImage)
   } catch (err) {
     return handleAuthError(err)
   }

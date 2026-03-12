@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     await requireAuth()
     const page = parseInt(req.nextUrl.searchParams.get('page') || '1')
     const search = req.nextUrl.searchParams.get('search') || ''
+    const sort = req.nextUrl.searchParams.get('sort') || 'newest'
     const offset = (page - 1) * PAGE_SIZE
 
     const where: Record<string, unknown> = {
@@ -22,23 +23,40 @@ export async function GET(req: NextRequest) {
       where.name = { contains: search, mode: 'insensitive' }
     }
 
-    const [images, total] = await Promise.all([
-      prisma.templateImage.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: offset,
-        take: PAGE_SIZE,
-        include: {
-          _count: { select: { templates: { where: { archivedAt: null } } } },
-        },
-      }),
-      prisma.templateImage.count({ where }),
-    ])
+    const needsComputedSort = sort === 'most_sets'
 
-    const result = images.map((img) => ({
+    const orderBy =
+      sort === 'oldest' ? { createdAt: 'asc' as const }
+      : sort === 'name_asc' ? { name: 'asc' as const }
+      : sort === 'name_desc' ? { name: 'desc' as const }
+      : sort === 'top_rated' ? { rating: 'desc' as const }
+      : { createdAt: 'desc' as const }
+
+    const images = await prisma.templateImage.findMany({
+      where,
+      orderBy: needsComputedSort ? { createdAt: 'desc' } : orderBy,
+      ...(needsComputedSort ? {} : { skip: offset, take: PAGE_SIZE }),
+      include: {
+        _count: { select: { templates: { where: { archivedAt: null } } } },
+      },
+    })
+
+    const total = needsComputedSort
+      ? images.length
+      : await prisma.templateImage.count({ where })
+
+    let result = images.map((img) => ({
       ...img,
       setCount: img._count.templates,
     }))
+
+    if (sort === 'most_sets') {
+      result.sort((a, b) => b.setCount - a.setCount)
+    }
+
+    if (needsComputedSort) {
+      result = result.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    }
 
     return NextResponse.json({ images: result, total, page, pageSize: PAGE_SIZE })
   } catch (err) {

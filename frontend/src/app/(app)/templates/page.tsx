@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { Upload, Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, ImageOff, Check, X, Crop } from 'lucide-react'
+import { Upload, Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, ImageOff, Check, X, Crop, Star } from 'lucide-react'
 import { ImageEditorModal } from '@/components/image-editor-modal'
 
 interface TemplateImage {
@@ -11,6 +11,7 @@ interface TemplateImage {
   thumbnailPath: string | null
   setCount: number
   renderCount: number
+  rating: number
   createdAt: string
 }
 
@@ -36,13 +37,14 @@ export default function TemplatesPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [editingImage, setEditingImage] = useState<{ id: string; imagePath: string } | null>(null)
+  const [sort, setSort] = useState('newest')
   const fileInput = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const fetchImages = useCallback(async (p: number, q?: string) => {
+  const fetchImages = useCallback(async (p: number, q?: string, s?: string) => {
     setLoading(true)
     try {
-      const data = await api.getSiteTemplates(p, q || undefined)
+      const data = await api.getSiteTemplates(p, q || undefined, s)
       setImages(data.images)
       setTotal(data.total)
       setPage(data.page)
@@ -53,17 +55,17 @@ export default function TemplatesPage() {
   }, [])
 
   useEffect(() => {
-    fetchImages(1)
+    fetchImages(1, undefined, sort)
     api.me().then((u) => setIsAdmin(!!u.isAdmin)).catch(() => {})
     api.getSets().then(setSets)
-  }, [fetchImages])
+  }, [fetchImages, sort])
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value)
     if (searchTimeout.current) clearTimeout(searchTimeout.current)
     searchTimeout.current = setTimeout(() => {
       setSearch(value)
-      fetchImages(1, value)
+      fetchImages(1, value, sort)
     }, 400)
   }
 
@@ -74,13 +76,13 @@ export default function TemplatesPage() {
       await api.uploadSiteTemplate(file)
     }
     if (fileInput.current) fileInput.current.value = ''
-    fetchImages(page, search)
+    fetchImages(page, search, sort)
   }
 
   const handleArchive = async (id: string) => {
     if (!confirm('Archive this template?')) return
     await api.archiveSiteTemplate(id)
-    fetchImages(page, search)
+    fetchImages(page, search, sort)
   }
 
   const handleRename = async (id: string) => {
@@ -93,14 +95,33 @@ export default function TemplatesPage() {
   const handleAddToSet = async (templateImageId: string, setId: string) => {
     await api.addTemplateToSet(setId, templateImageId)
     setAddToSetId(null)
-    fetchImages(page, search)
+    fetchImages(page, search, sort)
   }
 
   const totalPages = Math.ceil(total / pageSize)
 
+  const handleRate = async (id: string, rating: number) => {
+    await api.updateSiteTemplate(id, { rating })
+    setImages((prev) => prev.map((img) => (img.id === id ? { ...img, rating } : img)))
+  }
+
+  const sortOptions = [
+    { value: 'newest', label: 'Newest' },
+    { value: 'oldest', label: 'Oldest' },
+    { value: 'name_asc', label: 'Name A-Z' },
+    { value: 'name_desc', label: 'Name Z-A' },
+    { value: 'top_rated', label: 'Top Rated' },
+    { value: 'most_sets', label: 'Most Sets' },
+  ]
+
+  const handleSort = (s: string) => {
+    setSort(s)
+    fetchImages(1, search, s)
+  }
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">Templates</h1>
           <p className="text-sm text-gray-500 mt-1">{total} template{total !== 1 ? 's' : ''}</p>
@@ -128,6 +149,20 @@ export default function TemplatesPage() {
             <input ref={fileInput} type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
           )}
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 mb-6">
+        <span className="text-xs text-gray-500 mr-1">Sort:</span>
+        {sortOptions.map((opt) => (
+          <button key={opt.value} onClick={() => handleSort(opt.value)}
+            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+              sort === opt.value
+                ? 'border-blue-600 bg-blue-50 text-blue-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}>
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {loading && images.length === 0 ? (
@@ -179,6 +214,29 @@ export default function TemplatesPage() {
                   )}
                   <div className="flex gap-3 text-xs text-gray-400 mt-0.5">
                     <span>{img.setCount} set{img.setCount !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex gap-0.5 mt-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      isAdmin ? (
+                        <button
+                          key={star}
+                          onClick={() => handleRate(img.id, img.rating === star ? 0 : star)}
+                          className="p-0"
+                          title={img.rating === star ? 'Clear rating' : `Rate ${star}`}
+                        >
+                          <Star
+                            size={14}
+                            className={star <= img.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}
+                          />
+                        </button>
+                      ) : (
+                        <Star
+                          key={star}
+                          size={14}
+                          className={star <= img.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}
+                        />
+                      )
+                    ))}
                   </div>
                 </div>
 
@@ -258,7 +316,7 @@ export default function TemplatesPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-8">
               <button
-                onClick={() => fetchImages(page - 1, search)}
+                onClick={() => fetchImages(page - 1, search, sort)}
                 disabled={page <= 1}
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -268,7 +326,7 @@ export default function TemplatesPage() {
                 Page {page} of {totalPages}
               </span>
               <button
-                onClick={() => fetchImages(page + 1, search)}
+                onClick={() => fetchImages(page + 1, search, sort)}
                 disabled={page >= totalPages}
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -283,7 +341,7 @@ export default function TemplatesPage() {
           imageId={editingImage.id}
           imagePath={editingImage.imagePath}
           onClose={() => setEditingImage(null)}
-          onSaved={() => { setEditingImage(null); fetchImages(page, search) }}
+          onSaved={() => { setEditingImage(null); fetchImages(page, search, sort) }}
         />
       )}
     </div>

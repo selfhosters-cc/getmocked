@@ -3,17 +3,19 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import { Download, ArrowLeft, ChevronLeft, ChevronRight, Heart, X } from 'lucide-react'
+import { Download, ArrowLeft, ChevronLeft, ChevronRight, Heart, X, RefreshCw } from 'lucide-react'
+import { RemixModal, RemixRender } from '@/components/remix-modal'
 
 interface TemplateRender {
   id: string
   status: string
   renderedImagePath: string
-  renderOptions?: { tintColor?: string }
+  renderOptions?: { tintColor?: string; outputMode?: string; outputColor?: string }
   isFavorite?: boolean
   createdAt: string
   design: { id: string; name: string; imagePath: string }
   batch: { id: string; createdAt: string; description?: string } | null
+  mockupTemplate: { id: string; name: string; overlayConfig?: Record<string, unknown> | null }
 }
 
 export default function TemplateRendersPage() {
@@ -24,6 +26,7 @@ export default function TemplateRendersPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [remixRender, setRemixRender] = useState<TemplateRender | null>(null)
 
   const fetchPage = (p: number) => {
     api.getTemplateRenders(setId, templateId, p).then((data: { renders: TemplateRender[]; total: number; page: number; totalPages: number }) => {
@@ -46,6 +49,8 @@ export default function TemplateRendersPage() {
     await api.toggleRenderFavorite(renderId)
     fetchPage(page)
   }
+
+  const handleRemixRendered = () => { fetchPage(page) }
 
   const completedRenders = renders.filter((r) => r.status === 'complete')
 
@@ -120,10 +125,16 @@ export default function TemplateRendersPage() {
                       <Heart size={12} className={r.isFavorite ? 'fill-pink-500 text-pink-500' : 'text-gray-400'} />
                     </button>
                     {r.status === 'complete' && (
-                      <a href={api.getDownloadUrl(r.id)} download
-                        className="rounded-full bg-white p-1.5 shadow hover:bg-gray-100">
-                        <Download size={12} />
-                      </a>
+                      <>
+                        <a href={api.getDownloadUrl(r.id)} download
+                          className="rounded-full bg-white p-1.5 shadow hover:bg-gray-100">
+                          <Download size={12} />
+                        </a>
+                        <button onClick={() => setRemixRender(r)}
+                          className="rounded-full bg-white p-1.5 shadow hover:bg-blue-50">
+                          <RefreshCw size={12} className="text-gray-400" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -171,6 +182,10 @@ export default function TemplateRendersPage() {
               className="text-blue-400 hover:text-blue-300 flex items-center gap-1">
               <Download size={14} /> Download
             </a>
+            <button onClick={(e) => { e.stopPropagation(); setRemixRender(completedRenders[lightboxIndex]); closeLightbox() }}
+              className="text-blue-400 hover:text-blue-300 flex items-center gap-1">
+              <RefreshCw size={14} /> Remix
+            </button>
           </div>
 
           {lightboxIndex > 0 && (
@@ -194,6 +209,17 @@ export default function TemplateRendersPage() {
             onClick={(e) => e.stopPropagation()}
           />
         </div>
+      )}
+      {remixRender && (
+        <RemixModal
+          render={remixRender as RemixRender}
+          setId={setId}
+          designId={remixRender.design.id}
+          designImagePath={remixRender.design.imagePath}
+          batchId={remixRender.batch?.id}
+          onClose={() => setRemixRender(null)}
+          onRendered={handleRemixRendered}
+        />
       )}
     </div>
   )

@@ -25,6 +25,7 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
   const bgCanvasRef = useRef<HTMLCanvasElement>(null)
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const templateImageRef = useRef<HTMLImageElement | null>(null)
 
   const [maskPath, setMaskPath] = useState<string | null>(null)
   const [detecting, setDetecting] = useState(false)
@@ -44,14 +45,29 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      const maxWidth = 800
-      const scale = img.width > maxWidth ? maxWidth / img.width : 1
+      templateImageRef.current = img
+      const containerWidth = containerRef.current?.clientWidth ?? 800
+      const scale = Math.min(1, containerWidth / img.width)
       const w = Math.round(img.width * scale)
       const h = Math.round(img.height * scale)
       setCanvasSize({ width: w, height: h })
     }
     img.src = imageUrl
   }, [imageUrl])
+
+  // Recalculate canvas size when container resizes
+  useEffect(() => {
+    if (!containerRef.current || !templateImageRef.current) return
+    const ro = new ResizeObserver((entries) => {
+      const width = entries[0].contentRect.width
+      const img = templateImageRef.current!
+      const scale = Math.min(1, width / img.width)
+      setCanvasSize({ width: Math.round(img.width * scale), height: Math.round(img.height * scale) })
+    })
+    ro.observe(containerRef.current)
+    return () => ro.disconnect()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasSize.width > 0])
 
   // Draw background image when canvas size is ready
   useEffect(() => {
@@ -96,8 +112,15 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
     for (const stroke of strokes) {
       if (stroke.points.length < 1) continue
       ctx.save()
-      ctx.globalAlpha = 0.5
-      ctx.fillStyle = stroke.mode === 'include' ? '#00ff00' : '#ff0000'
+      if (stroke.mode === 'exclude') {
+        // Erase the green overlay to show the product photo underneath
+        ctx.globalCompositeOperation = 'destination-out'
+        ctx.globalAlpha = 1
+      } else {
+        ctx.globalCompositeOperation = 'source-over'
+        ctx.globalAlpha = 0.4
+      }
+      ctx.fillStyle = stroke.mode === 'include' ? '#00ff00' : '#000000'
       for (const pt of stroke.points) {
         ctx.beginPath()
         ctx.arc(pt.x, pt.y, stroke.radius, 0, Math.PI * 2)
@@ -122,26 +145,32 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
     img.src = `/uploads/${maskRelPath}?t=${Date.now()}`
   }, [])
 
-  const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement>): StrokePoint => {
+  const getCanvasPoint = (e: React.MouseEvent | React.TouchEvent): StrokePoint => {
     const canvas = overlayCanvasRef.current!
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
+    const clientX = 'touches' in e ? (e.touches[0]?.clientX ?? e.changedTouches[0].clientX) : e.clientX
+    const clientY = 'touches' in e ? (e.touches[0]?.clientY ?? e.changedTouches[0].clientY) : e.clientY
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
     }
   }
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
     if (!maskPath) return
     isDrawingRef.current = true
     currentStrokeRef.current = [getCanvasPoint(e)]
-    drawBrushPreview(e)
+    if (!('touches' in e)) {
+      drawBrushPreview(e as React.MouseEvent)
+    }
   }
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    drawBrushPreview(e)
+  const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!('touches' in e)) {
+      drawBrushPreview(e as React.MouseEvent)
+    }
     if (!isDrawingRef.current) return
     const pt = getCanvasPoint(e)
     currentStrokeRef.current.push(pt)
@@ -152,27 +181,36 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.save()
-    ctx.globalAlpha = 0.5
-    ctx.fillStyle = brushMode === 'include' ? '#00ff00' : '#ff0000'
+    if (brushMode === 'exclude') {
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.globalAlpha = 1
+      ctx.fillStyle = '#000000'
+    } else {
+      ctx.globalAlpha = 0.4
+      ctx.fillStyle = '#00ff00'
+    }
     ctx.beginPath()
     ctx.arc(pt.x, pt.y, brushSize, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
   }
 
-  const handleMouseUp = () => {
+  const handlePointerUp = () => {
     if (!isDrawingRef.current) return
     isDrawingRef.current = false
     if (currentStrokeRef.current.length > 0) {
+      // Capture points before clearing — setStrokes callback runs async (React batching)
+      // and would read the already-cleared ref otherwise
+      const completedPoints = currentStrokeRef.current
+      currentStrokeRef.current = []
       setStrokes((prev) => [
         ...prev,
-        { points: currentStrokeRef.current, radius: brushSize, mode: brushMode },
+        { points: completedPoints, radius: brushSize, mode: brushMode },
       ])
-      currentStrokeRef.current = []
     }
   }
 
-  const drawBrushPreview = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const drawBrushPreview = (e: React.MouseEvent) => {
     if (!maskPath) return
     const canvas = overlayCanvasRef.current
     if (!canvas) return
@@ -185,8 +223,14 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
     // Draw current in-progress stroke
     if (isDrawingRef.current && currentStrokeRef.current.length > 0) {
       ctx.save()
-      ctx.globalAlpha = 0.5
-      ctx.fillStyle = brushMode === 'include' ? '#00ff00' : '#ff0000'
+      if (brushMode === 'exclude') {
+        ctx.globalCompositeOperation = 'destination-out'
+        ctx.globalAlpha = 1
+        ctx.fillStyle = '#000000'
+      } else {
+        ctx.globalAlpha = 0.4
+        ctx.fillStyle = '#00ff00'
+      }
       for (const pt of currentStrokeRef.current) {
         ctx.beginPath()
         ctx.arc(pt.x, pt.y, brushSize, 0, Math.PI * 2)
@@ -225,7 +269,18 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
     if (!maskPath || strokes.length === 0) return
     setSaving(true)
     try {
-      const result = await api.refineMask(setId, templateId, maskPath, strokes)
+      // Scale stroke coordinates from canvas space to original image space
+      const origW = templateImageRef.current?.naturalWidth ?? canvasSize.width
+      const scaleFactor = origW / canvasSize.width
+      const scaledStrokes = strokes.map((s) => ({
+        ...s,
+        radius: Math.round(s.radius * scaleFactor),
+        points: s.points.map((p) => ({
+          x: Math.round(p.x * scaleFactor),
+          y: Math.round(p.y * scaleFactor),
+        })),
+      }))
+      const result = await api.refineMask(setId, templateId, maskPath, scaledStrokes)
       setStrokes([])
       const newPath = result.maskPath || maskPath
       setMaskPath(newPath)
@@ -312,25 +367,28 @@ export function MaskEditor({ setId, templateId, imageUrl, onMaskReady }: MaskEdi
       {/* Canvas layers */}
       <div
         ref={containerRef}
-        className="relative border rounded bg-gray-100 inline-block"
-        style={{ width: canvasSize.width, height: canvasSize.height }}
+        className="relative border rounded bg-gray-100 w-full max-w-[800px]"
+        style={{ aspectRatio: `${canvasSize.width} / ${canvasSize.height}` }}
       >
         <canvas
           ref={bgCanvasRef}
           width={canvasSize.width}
           height={canvasSize.height}
-          className="absolute inset-0"
+          className="absolute inset-0 w-full h-full"
         />
         <canvas
           ref={overlayCanvasRef}
           width={canvasSize.width}
           height={canvasSize.height}
-          className="absolute inset-0"
-          style={{ cursor: maskPath ? 'crosshair' : 'default' }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          className="absolute inset-0 w-full h-full"
+          style={{ cursor: maskPath ? 'crosshair' : 'default', touchAction: 'none' }}
+          onMouseDown={handlePointerDown}
+          onMouseMove={handlePointerMove}
+          onMouseUp={handlePointerUp}
+          onMouseLeave={handlePointerUp}
+          onTouchStart={(e) => { e.preventDefault(); handlePointerDown(e) }}
+          onTouchMove={(e) => { e.preventDefault(); handlePointerMove(e) }}
+          onTouchEnd={handlePointerUp}
         />
       </div>
 

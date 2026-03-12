@@ -20,6 +20,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         include: {
           design: { select: { id: true, name: true, imagePath: true } },
           batch: { select: { id: true, createdAt: true, description: true } },
+          mockupTemplate: { select: { id: true, name: true, overlayConfig: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,

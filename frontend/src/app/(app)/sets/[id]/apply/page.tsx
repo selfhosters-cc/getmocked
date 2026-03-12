@@ -3,7 +3,8 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import { Upload, Download, Loader2, Image as ImageIcon, X, ChevronLeft, ChevronRight, Clock, Heart } from 'lucide-react'
+import { Upload, Download, Loader2, Image as ImageIcon, X, ChevronLeft, ChevronRight, Clock, Heart, RefreshCw } from 'lucide-react'
+import { RemixModal, RemixRender } from '@/components/remix-modal'
 
 interface Design {
   id: string
@@ -20,7 +21,7 @@ interface RenderStatus {
   id: string
   status: string
   isFavorite?: boolean
-  mockupTemplate: { name: string; overlayConfig?: OverlaySettings | null }
+  mockupTemplate: { id: string; name: string; overlayConfig?: OverlaySettings | null }
   renderedImagePath: string
   renderOptions?: { tintColor?: string; outputMode?: string; outputColor?: string }
 }
@@ -46,6 +47,7 @@ export default function ApplyDesignPage() {
   const [outputMode, setOutputMode] = useState<'original' | 'transparent' | 'solid'>('original')
   const [outputColor, setOutputColor] = useState('#ffffff')
   const [batchNote, setBatchNote] = useState('')
+  const [remixRender, setRemixRender] = useState<RenderStatus | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval>>()
 
@@ -135,6 +137,12 @@ export default function ApplyDesignPage() {
     if (batchId) {
       const updated = await api.getBatch(batchId)
       setRenders(updated.renders)
+    }
+  }
+
+  const handleRemixRendered = () => {
+    if (batchId) {
+      api.getBatch(batchId).then((updated) => setRenders(updated.renders))
     }
   }
 
@@ -372,11 +380,18 @@ export default function ApplyDesignPage() {
                       <Heart size={14} className={r.isFavorite ? 'fill-pink-500 text-pink-500' : 'text-gray-400'} />
                     </button>
                     {r.status === 'complete' && (
-                      <a href={api.getDownloadUrl(r.id)} download
-                        className="shrink-0 ml-2 p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-                        title="Download">
-                        <Download size={14} />
-                      </a>
+                      <>
+                        <a href={api.getDownloadUrl(r.id)} download
+                          className="shrink-0 ml-2 p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                          title="Download">
+                          <Download size={14} />
+                        </a>
+                        <button onClick={() => setRemixRender(r)}
+                          className="shrink-0 ml-1 p-1.5 rounded-full hover:bg-blue-50 text-gray-500 hover:text-blue-600"
+                          title="Remix">
+                          <RefreshCw size={14} />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -406,6 +421,10 @@ export default function ApplyDesignPage() {
               className="text-blue-400 hover:text-blue-300 flex items-center gap-1 shrink-0">
               <Download size={14} /> Download
             </a>
+            <button onClick={(e) => { e.stopPropagation(); setRemixRender(completedRenders[lightboxIndex]); closeLightbox() }}
+              className="text-blue-400 hover:text-blue-300 flex items-center gap-1 shrink-0">
+              <RefreshCw size={14} /> Remix
+            </button>
           </div>
 
           {lightboxIndex > 0 && (
@@ -429,6 +448,18 @@ export default function ApplyDesignPage() {
             onClick={(e) => e.stopPropagation()}
           />
         </div>
+      )}
+
+      {remixRender && selectedDesign && (
+        <RemixModal
+          render={remixRender as RemixRender}
+          setId={setId}
+          designId={selectedDesign}
+          designImagePath={designs.find((d) => d.id === selectedDesign)?.imagePath ?? ''}
+          batchId={batchId ?? undefined}
+          onClose={() => setRemixRender(null)}
+          onRendered={handleRemixRendered}
+        />
       )}
     </div>
   )

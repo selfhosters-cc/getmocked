@@ -1,8 +1,15 @@
 'use client'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { Upload, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, ImageOff, Check, X, Crop } from 'lucide-react'
+import Link from 'next/link'
+import { Upload, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, ImageOff, Check, X, Crop, Star } from 'lucide-react'
 import { ImageEditorModal } from '@/components/image-editor-modal'
+
+interface TemplateLink {
+  templateId: string
+  setId: string
+  renderCount: number
+}
 
 interface TemplateImage {
   id: string
@@ -11,6 +18,8 @@ interface TemplateImage {
   thumbnailPath: string | null
   setCount: number
   renderCount: number
+  rating: number
+  templateLinks: TemplateLink[]
   createdAt: string
 }
 
@@ -33,12 +42,13 @@ export default function LibraryPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [editingImage, setEditingImage] = useState<{ id: string; imagePath: string } | null>(null)
+  const [sort, setSort] = useState('newest')
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const fetchImages = useCallback(async (p: number) => {
+  const fetchImages = useCallback(async (p: number, s?: string) => {
     setLoading(true)
     try {
-      const data = await api.getTemplateImages(p)
+      const data = await api.getTemplateImages(p, s)
       setImages(data.images)
       setTotal(data.total)
       setPage(data.page)
@@ -49,9 +59,9 @@ export default function LibraryPage() {
   }, [])
 
   useEffect(() => {
-    fetchImages(1)
+    fetchImages(1, sort)
     api.getSets().then(setSets)
-  }, [fetchImages])
+  }, [fetchImages, sort])
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -60,13 +70,13 @@ export default function LibraryPage() {
       await api.uploadTemplateImage(file)
     }
     if (fileInput.current) fileInput.current.value = ''
-    fetchImages(page)
+    fetchImages(page, sort)
   }
 
   const handleArchive = async (id: string) => {
     if (!confirm('Archive this template image?')) return
     await api.archiveTemplateImage(id)
-    fetchImages(page)
+    fetchImages(page, sort)
   }
 
   const handleRename = async (id: string) => {
@@ -79,14 +89,34 @@ export default function LibraryPage() {
   const handleAddToSet = async (templateImageId: string, setId: string) => {
     await api.addTemplateToSet(setId, templateImageId)
     setAddToSetId(null)
-    fetchImages(page)
+    fetchImages(page, sort)
   }
 
   const totalPages = Math.ceil(total / pageSize)
 
+  const handleRate = async (id: string, rating: number) => {
+    await api.updateTemplateImage(id, { rating })
+    setImages((prev) => prev.map((img) => (img.id === id ? { ...img, rating } : img)))
+  }
+
+  const sortOptions = [
+    { value: 'newest', label: 'Newest' },
+    { value: 'oldest', label: 'Oldest' },
+    { value: 'name_asc', label: 'Name A-Z' },
+    { value: 'name_desc', label: 'Name Z-A' },
+    { value: 'top_rated', label: 'Top Rated' },
+    { value: 'most_renders', label: 'Most Renders' },
+    { value: 'most_sets', label: 'Most Sets' },
+  ]
+
+  const handleSort = (s: string) => {
+    setSort(s)
+    fetchImages(1, s)
+  }
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">My Library</h1>
           <p className="text-sm text-gray-500 mt-1">{total} template{total !== 1 ? 's' : ''}</p>
@@ -98,6 +128,20 @@ export default function LibraryPage() {
           <Upload size={20} /> Upload
         </button>
         <input ref={fileInput} type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
+      </div>
+
+      <div className="flex items-center gap-2 mb-6">
+        <span className="text-xs text-gray-500 mr-1">Sort:</span>
+        {sortOptions.map((opt) => (
+          <button key={opt.value} onClick={() => handleSort(opt.value)}
+            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+              sort === opt.value
+                ? 'border-blue-600 bg-blue-50 text-blue-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}>
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {loading && images.length === 0 ? (
@@ -145,7 +189,31 @@ export default function LibraryPage() {
                   )}
                   <div className="flex gap-3 text-xs text-gray-400 mt-0.5">
                     <span>{img.setCount} set{img.setCount !== 1 ? 's' : ''}</span>
-                    <span>{img.renderCount} render{img.renderCount !== 1 ? 's' : ''}</span>
+                    {img.renderCount > 0 && img.templateLinks.length > 0 ? (
+                      <Link
+                        href={`/sets/${img.templateLinks[0].setId}/templates/${img.templateLinks[0].templateId}/renders`}
+                        className="text-blue-500 hover:text-blue-700 hover:underline"
+                      >
+                        {img.renderCount} render{img.renderCount !== 1 ? 's' : ''}
+                      </Link>
+                    ) : (
+                      <span>{img.renderCount} render{img.renderCount !== 1 ? 's' : ''}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-0.5 mt-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => handleRate(img.id, img.rating === star ? 0 : star)}
+                        className="p-0"
+                        title={img.rating === star ? 'Clear rating' : `Rate ${star}`}
+                      >
+                        <Star
+                          size={14}
+                          className={star <= img.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}
+                        />
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -219,7 +287,7 @@ export default function LibraryPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-8">
               <button
-                onClick={() => fetchImages(page - 1)}
+                onClick={() => fetchImages(page - 1, sort)}
                 disabled={page <= 1}
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -229,7 +297,7 @@ export default function LibraryPage() {
                 Page {page} of {totalPages}
               </span>
               <button
-                onClick={() => fetchImages(page + 1)}
+                onClick={() => fetchImages(page + 1, sort)}
                 disabled={page >= totalPages}
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -244,7 +312,7 @@ export default function LibraryPage() {
           imageId={editingImage.id}
           imagePath={editingImage.imagePath}
           onClose={() => setEditingImage(null)}
-          onSaved={() => { setEditingImage(null); fetchImages(page) }}
+          onSaved={() => { setEditingImage(null); fetchImages(page, sort) }}
         />
       )}
     </div>

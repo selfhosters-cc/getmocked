@@ -78,6 +78,17 @@ export const api = {
   getRenderStatus: (mockupSetId: string, designId: string) =>
     request(`/api/render/status?mockupSetId=${mockupSetId}&designId=${designId}`),
   getDownloadUrl: (renderId: string) => `/api/render/${renderId}/download`,
+
+  // Single Render (remix)
+  singleRender: (data: {
+    mockupTemplateId: string
+    designId: string
+    tintColor?: string
+    outputMode?: string
+    outputColor?: string
+    batchId?: string
+  }) => request('/api/render/single', { method: 'POST', body: JSON.stringify(data) }),
+  getRender: (id: string) => request(`/api/render/${id}/status`),
   getZipUrl: (mockupSetId: string, designId: string) =>
     `/api/render/download-zip?mockupSetId=${mockupSetId}&designId=${designId}`,
 
@@ -117,7 +128,8 @@ export const api = {
     request(`/api/mockup-sets/${setId}/templates/${templateId}/renders?page=${page}`),
 
   // Template Image Library
-  getTemplateImages: (page = 1) => request(`/api/template-images?page=${page}`),
+  getTemplateImages: (page = 1, sort?: string) =>
+    request(`/api/template-images?page=${page}${sort ? `&sort=${sort}` : ''}`),
   uploadTemplateImage: (file: File, name?: string) => {
     const form = new FormData()
     form.append('image', file)
@@ -129,7 +141,7 @@ export const api = {
     }).then((r) => r.json())
   },
   getTemplateImage: (id: string) => request(`/api/template-images/${id}`),
-  updateTemplateImage: (id: string, data: { name?: string; defaultOverlayConfig?: unknown; defaultMaskPath?: string }) =>
+  updateTemplateImage: (id: string, data: { name?: string; defaultOverlayConfig?: unknown; defaultMaskPath?: string; rating?: number }) =>
     request(`/api/template-images/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   archiveTemplateImage: (id: string) =>
     request(`/api/template-images/${id}`, { method: 'DELETE' }),
@@ -137,8 +149,8 @@ export const api = {
     request(`/api/template-images/${id}/edit`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Site-wide Templates
-  getSiteTemplates: (page = 1, search?: string) =>
-    request(`/api/template-images/site?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+  getSiteTemplates: (page = 1, search?: string, sort?: string) =>
+    request(`/api/template-images/site?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}${sort ? `&sort=${sort}` : ''}`),
   uploadSiteTemplate: (file: File, name?: string) => {
     const form = new FormData()
     form.append('image', file)
@@ -149,7 +161,7 @@ export const api = {
       body: form,
     }).then((r) => r.json())
   },
-  updateSiteTemplate: (id: string, data: { name?: string; defaultOverlayConfig?: unknown }) =>
+  updateSiteTemplate: (id: string, data: { name?: string; defaultOverlayConfig?: unknown; rating?: number }) =>
     request(`/api/template-images/site/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   archiveSiteTemplate: (id: string) =>
     request(`/api/template-images/site/${id}`, { method: 'DELETE' }),

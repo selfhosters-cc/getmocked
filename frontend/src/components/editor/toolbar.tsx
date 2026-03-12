@@ -35,8 +35,8 @@ export function Toolbar({
   onReset, onSave, saving,
 }: ToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3 sm:gap-4 rounded-lg border bg-white p-3 mb-4">
-      <div className="flex items-center gap-2">
+    <div className="rounded-lg border bg-white p-3 mb-4 space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
+      <div className="flex items-center gap-2 w-full sm:w-auto">
         <label className="text-sm font-medium">Mode:</label>
         <select value={mode} onChange={(e) => onModeChange(e.target.value as 'advanced' | 'basic')}
           className="rounded border px-2 py-1 text-sm">
@@ -47,28 +47,30 @@ export function Toolbar({
 
       {mode === 'advanced' && (
         <>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium whitespace-nowrap">Disp:</label>
-            <input type="range" min="0" max="1" step="0.05" value={displacementIntensity}
-              onChange={(e) => onDisplacementChange(parseFloat(e.target.value))}
-              className="w-20 sm:w-28" />
-            <span className="text-sm text-gray-500 w-8">{Math.round(displacementIntensity * 100)}%</span>
+          <div className="grid grid-cols-1 gap-2 w-full sm:contents">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium whitespace-nowrap">Disp:</label>
+              <input type="range" min="0" max="1" step="0.05" value={displacementIntensity}
+                onChange={(e) => onDisplacementChange(parseFloat(e.target.value))}
+                className="flex-1 sm:flex-none sm:w-28" />
+              <span className="text-sm text-gray-500 w-8">{Math.round(displacementIntensity * 100)}%</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium whitespace-nowrap">Trans:</label>
+              <input type="range" min="0" max="1" step="0.05" value={transparency}
+                onChange={(e) => onTransparencyChange(parseFloat(e.target.value))}
+                className="flex-1 sm:flex-none sm:w-28" />
+              <span className="text-sm text-gray-500 w-8">{Math.round(transparency * 100)}%</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium whitespace-nowrap">Curve:</label>
+              <input type="range" min="-1" max="1" step="0.05" value={curvature}
+                onChange={(e) => onCurvatureChange(parseFloat(e.target.value))}
+                className="flex-1 sm:flex-none sm:w-28" />
+              <span className="text-sm text-gray-500 w-12">{curvatureLabel(curvature)}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium whitespace-nowrap">Trans:</label>
-            <input type="range" min="0" max="1" step="0.05" value={transparency}
-              onChange={(e) => onTransparencyChange(parseFloat(e.target.value))}
-              className="w-20 sm:w-28" />
-            <span className="text-sm text-gray-500 w-8">{Math.round(transparency * 100)}%</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium whitespace-nowrap">Curve:</label>
-            <input type="range" min="-1" max="1" step="0.05" value={curvature}
-              onChange={(e) => onCurvatureChange(parseFloat(e.target.value))}
-              className="w-20 sm:w-28" />
-            <span className="text-sm text-gray-500 w-12">{curvatureLabel(curvature)}</span>
-          </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 w-full sm:w-auto">
             <label className="text-sm font-medium whitespace-nowrap mr-1">Axis:</label>
             {axisOptions.map((opt) => (
               <button
@@ -87,10 +89,10 @@ export function Toolbar({
         </>
       )}
 
-      <div className="ml-auto flex gap-2">
-        <button onClick={onReset} className="rounded-lg border px-3 sm:px-4 py-1.5 text-sm hover:bg-gray-50">Reset</button>
+      <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+        <button onClick={onReset} className="flex-1 sm:flex-none rounded-lg border px-3 sm:px-4 py-1.5 text-sm hover:bg-gray-50">Reset</button>
         <button onClick={onSave} disabled={saving}
-          className="rounded-lg bg-blue-600 px-3 sm:px-4 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50">
+          className="flex-1 sm:flex-none rounded-lg bg-blue-600 px-3 sm:px-4 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50">
           {saving ? 'Saving...' : 'Save'}
         </button>
       </div>

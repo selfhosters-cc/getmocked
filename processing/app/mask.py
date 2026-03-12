@@ -5,7 +5,8 @@ from PIL import Image
 
 def detect_product_mask(image: Image.Image) -> Image.Image:
     """Auto-detect product region by identifying studio background.
-    Works best with white/light gray backgrounds (common in product photography).
+    Works with white/light backgrounds via thresholding, falls back to
+    GrabCut edge-based detection for darker or non-uniform backgrounds.
     Returns a grayscale mask: 255 = product, 0 = background, with soft edges.
     """
     img = np.array(image.convert("RGB"))
@@ -20,18 +21,29 @@ def detect_product_mask(image: Image.Image) -> Image.Image:
     bg_mean = float(border.mean())
     bg_std = float(border.std())
 
-    if bg_mean < 180 or bg_std > 30:
-        return Image.new("L", image.size, 255)
+    if bg_mean >= 180 and bg_std <= 30:
+        # Light uniform background — use threshold-based detection
+        threshold = bg_mean - max(20, bg_std * 3)
+        product_mask = (l_channel < threshold).astype(np.uint8) * 255
 
-    threshold = bg_mean - max(20, bg_std * 3)
-    product_mask = (l_channel < threshold).astype(np.uint8) * 255
+        a_channel = lab[:, :, 1].astype(np.float32) - 128
+        b_channel = lab[:, :, 2].astype(np.float32) - 128
+        saturation = np.sqrt(a_channel ** 2 + b_channel ** 2)
+        color_mask = (saturation > 15).astype(np.uint8) * 255
 
-    a_channel = lab[:, :, 1].astype(np.float32) - 128
-    b_channel = lab[:, :, 2].astype(np.float32) - 128
-    saturation = np.sqrt(a_channel ** 2 + b_channel ** 2)
-    color_mask = (saturation > 15).astype(np.uint8) * 255
-
-    combined = np.maximum(product_mask, color_mask)
+        combined = np.maximum(product_mask, color_mask)
+    else:
+        # Non-white or non-uniform background — use GrabCut
+        margin_x = max(1, w // 10)
+        margin_y = max(1, h // 10)
+        rect = (margin_x, margin_y, w - 2 * margin_x, h - 2 * margin_y)
+        gc_mask = np.zeros((h, w), np.uint8)
+        bgd_model = np.zeros((1, 65), np.float64)
+        fgd_model = np.zeros((1, 65), np.float64)
+        cv2.grabCut(img, gc_mask, rect, bgd_model, fgd_model, 5, cv2.GC_INIT_WITH_RECT)
+        combined = np.where(
+            (gc_mask == cv2.GC_FGD) | (gc_mask == cv2.GC_PR_FGD), 255, 0
+        ).astype(np.uint8)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel, iterations=2)
