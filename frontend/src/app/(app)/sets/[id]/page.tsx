@@ -49,8 +49,8 @@ interface MockupSet {
 function TemplateCard({ template: t, setId, onDelete, onToggleFavorite }: { template: Template; setId: string; onDelete: () => void; onToggleFavorite: () => void }) {
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null)
 
-  const imagePath = t.templateImage.imagePath
-  const thumbnailPath = t.templateImage.thumbnailPath
+  const imagePath = t.templateImage?.imagePath
+  const thumbnailPath = t.templateImage?.thumbnailPath
   const thumbnailUrl = thumbnailPath ? `/uploads/${thumbnailPath}` : imagePath ? `/api/thumbnails/${imagePath}` : ''
   const fullImageUrl = imagePath ? `/uploads/${imagePath}` : ''
 

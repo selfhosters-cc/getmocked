@@ -92,7 +92,7 @@ export default function FavouritesPage() {
           {templates.map((t) => (
             <div key={t.id} className="group relative rounded-xl border bg-white overflow-hidden">
               <Link href={`/sets/${t.mockupSet.id}/templates/${t.id}/edit`}>
-                <img src={t.templateImage.thumbnailPath ? `/uploads/${t.templateImage.thumbnailPath}` : `/uploads/${t.templateImage.imagePath}`} alt={t.name}
+                <img src={t.templateImage?.thumbnailPath ? `/uploads/${t.templateImage.thumbnailPath}` : t.templateImage?.imagePath ? `/api/thumbnails/${t.templateImage.imagePath}` : ''} alt={t.name}
                   className="w-full aspect-square object-cover" />
               </Link>
               <div className="p-3">

@@ -48,8 +48,8 @@ export default function SetsPage() {
               {set.templates.length > 0 ? (
                 <div className="grid grid-cols-3 gap-px bg-gray-100">
                   {set.templates.slice(0, 3).map((t) => {
-                    const imagePath = t.templateImage.imagePath
-                    const thumbPath = t.templateImage.thumbnailPath
+                    const imagePath = t.templateImage?.imagePath
+                    const thumbPath = t.templateImage?.thumbnailPath
                     const src = thumbPath ? `/uploads/${thumbPath}` : imagePath ? `/api/thumbnails/${imagePath}` : ''
                     return (
                       <img key={t.id} src={src} alt={t.name}
