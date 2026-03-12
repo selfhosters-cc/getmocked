@@ -128,8 +128,8 @@ export const api = {
     request(`/api/mockup-sets/${setId}/templates/${templateId}/renders?page=${page}`),
 
   // Template Image Library
-  getTemplateImages: (page = 1, sort?: string, tags?: string[]) =>
-    request(`/api/template-images?page=${page}${sort ? `&sort=${sort}` : ''}${tags?.length ? `&tags=${tags.join(',')}` : ''}`),
+  getTemplateImages: (page = 1, sort?: string, tags?: string[], search?: string) =>
+    request(`/api/template-images?page=${page}${sort ? `&sort=${sort}` : ''}${tags?.length ? `&tags=${tags.join(',')}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
   uploadTemplateImage: (file: File, name?: string) => {
     const form = new FormData()
     form.append('image', file)

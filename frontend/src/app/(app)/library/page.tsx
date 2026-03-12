@@ -6,6 +6,8 @@ import { Upload, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, ImageOff, Chec
 import { ImageEditorModal } from '@/components/image-editor-modal'
 import { UploadProgress, UploadItem } from '@/components/upload-progress'
 import { useFileDrop } from '@/hooks/use-file-drop'
+import { TagInput } from '@/components/tag-input'
+import { TagFilter } from '@/components/tag-filter'
 
 interface TemplateLink {
   templateId: string
@@ -21,6 +23,7 @@ interface TemplateImage {
   setCount: number
   renderCount: number
   rating: number
+  tags: Array<{ id: string; name: string }>
   templateLinks: TemplateLink[]
   createdAt: string
 }
@@ -46,12 +49,17 @@ export default function LibraryPage() {
   const [editingImage, setEditingImage] = useState<{ id: string; imagePath: string } | null>(null)
   const [sort, setSort] = useState('newest')
   const [uploads, setUploads] = useState<UploadItem[]>([])
+  const [activeTags, setActiveTags] = useState<string[]>([])
+  const activeTagsRef = useRef<string[]>([])
+  const [searchInput, setSearchInput] = useState('')
+  const searchRef = useRef('')
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const fetchImages = useCallback(async (p: number, s?: string) => {
+  const fetchImages = useCallback(async (p: number, s?: string, tags?: string[], search?: string) => {
     setLoading(true)
     try {
-      const data = await api.getTemplateImages(p, s)
+      const data = await api.getTemplateImages(p, s, tags, search)
       setImages(data.images)
       setTotal(data.total)
       setPage(data.page)
@@ -73,13 +81,13 @@ export default function LibraryPage() {
         setUploads((prev) => prev.map((item, j) => (j === i ? { ...item, status: 'error', error: 'Upload failed' } : item)))
       }
     }
-    fetchImages(page, sort)
+    fetchImages(page, sort, activeTagsRef.current, searchRef.current)
   }, [fetchImages, page, sort])
 
   const { isDragging, dropProps } = useFileDrop(uploadFiles)
 
   useEffect(() => {
-    fetchImages(1, sort)
+    fetchImages(1, sort, activeTagsRef.current, searchRef.current)
     api.getSets().then(setSets)
   }, [fetchImages, sort])
 
@@ -93,7 +101,7 @@ export default function LibraryPage() {
   const handleArchive = async (id: string) => {
     if (!confirm('Archive this template image?')) return
     await api.archiveTemplateImage(id)
-    fetchImages(page, sort)
+    fetchImages(page, sort, activeTagsRef.current, searchRef.current)
   }
 
   const handleRename = async (id: string) => {
@@ -106,7 +114,7 @@ export default function LibraryPage() {
   const handleAddToSet = async (templateImageId: string, setId: string) => {
     await api.addTemplateToSet(setId, templateImageId)
     setAddToSetId(null)
-    fetchImages(page, sort)
+    fetchImages(page, sort, activeTagsRef.current, searchRef.current)
   }
 
   const totalPages = Math.ceil(total / pageSize)
@@ -128,7 +136,36 @@ export default function LibraryPage() {
 
   const handleSort = (s: string) => {
     setSort(s)
-    fetchImages(1, s)
+    fetchImages(1, s, activeTagsRef.current, searchRef.current)
+  }
+
+  const handleTagsChange = (tags: string[]) => {
+    setActiveTags(tags)
+    activeTagsRef.current = tags
+    fetchImages(1, sort, tags, searchRef.current)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value)
+    searchRef.current = value
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => {
+      fetchImages(1, sort, activeTagsRef.current, value)
+    }, 400)
+  }
+
+  const handleAddTag = async (imageId: string, tagName: string) => {
+    const result = await api.addTagToImage(imageId, tagName)
+    setImages((prev) => prev.map((img) =>
+      img.id === imageId ? { ...img, tags: [...img.tags, result.tag] } : img
+    ))
+  }
+
+  const handleRemoveTag = async (imageId: string, tagId: string) => {
+    await api.removeTagFromImage(imageId, tagId)
+    setImages((prev) => prev.map((img) =>
+      img.id === imageId ? { ...img, tags: img.tags.filter((t) => t.id !== tagId) } : img
+    ))
   }
 
   return (
@@ -146,12 +183,21 @@ export default function LibraryPage() {
           <h1 className="text-2xl font-bold">My Library</h1>
           <p className="text-sm text-gray-500 mt-1">{total} template{total !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => fileInput.current?.click()}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700"
-        >
-          <Upload size={20} /> Upload
-        </button>
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search templates..."
+            className="px-3 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={() => fileInput.current?.click()}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700"
+          >
+            <Upload size={20} /> Upload
+          </button>
+        </div>
         <input ref={fileInput} type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
       </div>
 
@@ -168,6 +214,8 @@ export default function LibraryPage() {
           </button>
         ))}
       </div>
+
+      <TagFilter activeTags={activeTags} onTagsChange={handleTagsChange} />
 
       {loading && images.length === 0 ? (
         <div className="flex items-center justify-center py-20 text-gray-400">Loading...</div>
@@ -240,6 +288,11 @@ export default function LibraryPage() {
                       </button>
                     ))}
                   </div>
+                  <TagInput
+                    tags={img.tags}
+                    onAdd={(name) => handleAddTag(img.id, name)}
+                    onRemove={(tagId) => handleRemoveTag(img.id, tagId)}
+                  />
                 </div>
 
                 {/* Hover actions */}
@@ -312,7 +365,7 @@ export default function LibraryPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-8">
               <button
-                onClick={() => fetchImages(page - 1, sort)}
+                onClick={() => fetchImages(page - 1, sort, activeTagsRef.current, searchRef.current)}
                 disabled={page <= 1}
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -322,7 +375,7 @@ export default function LibraryPage() {
                 Page {page} of {totalPages}
               </span>
               <button
-                onClick={() => fetchImages(page + 1, sort)}
+                onClick={() => fetchImages(page + 1, sort, activeTagsRef.current, searchRef.current)}
                 disabled={page >= totalPages}
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -337,7 +390,7 @@ export default function LibraryPage() {
           imageId={editingImage.id}
           imagePath={editingImage.imagePath}
           onClose={() => setEditingImage(null)}
-          onSaved={() => { setEditingImage(null); fetchImages(page, sort) }}
+          onSaved={() => { setEditingImage(null); fetchImages(page, sort, activeTagsRef.current, searchRef.current) }}
         />
       )}
       <UploadProgress items={uploads} onDismiss={() => setUploads([])} />
