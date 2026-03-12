@@ -133,6 +133,8 @@ export const api = {
     request(`/api/template-images/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   archiveTemplateImage: (id: string) =>
     request(`/api/template-images/${id}`, { method: 'DELETE' }),
+  editTemplateImage: (id: string, data: { rotation?: number; crop?: { x: number; y: number; width: number; height: number } }) =>
+    request(`/api/template-images/${id}/edit`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Site-wide Templates
   getSiteTemplates: (page = 1, search?: string) =>
