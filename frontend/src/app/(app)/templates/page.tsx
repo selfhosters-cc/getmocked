@@ -34,6 +34,7 @@ export default function TemplatesPage() {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
+  const isAdminRef = useRef(false)
   const [sets, setSets] = useState<MockupSet[]>([])
   const [addToSetId, setAddToSetId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -58,6 +59,7 @@ export default function TemplatesPage() {
   }, [])
 
   const uploadFiles = useCallback(async (files: File[]) => {
+    if (!isAdminRef.current) return
     const items: UploadItem[] = files.map((f) => ({ name: f.name, status: 'pending' }))
     setUploads(items)
     for (let i = 0; i < files.length; i++) {
@@ -76,7 +78,7 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     fetchImages(1, undefined, sort)
-    api.me().then((u) => setIsAdmin(!!u.isAdmin)).catch(() => {})
+    api.me().then((u) => { const admin = !!u.isAdmin; setIsAdmin(admin); isAdminRef.current = admin }).catch(() => {})
     api.getSets().then(setSets)
   }, [fetchImages, sort])
 
@@ -138,7 +140,7 @@ export default function TemplatesPage() {
 
   return (
     <div {...dropProps} className="relative min-h-[calc(100vh-6rem)]">
-      {isDragging && (
+      {isDragging && isAdmin && (
         <div className="fixed inset-0 bg-blue-500/10 border-4 border-dashed border-blue-400 rounded-xl z-40 flex items-center justify-center pointer-events-none">
           <div className="bg-white rounded-xl px-8 py-6 shadow-lg text-center">
             <Upload size={32} className="mx-auto text-blue-500 mb-2" />
