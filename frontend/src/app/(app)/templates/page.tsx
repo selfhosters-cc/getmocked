@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { Upload, Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, ImageOff, Check, X } from 'lucide-react'
+import { Upload, Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, ImageOff, Check, X, Crop } from 'lucide-react'
+import { ImageEditorModal } from '@/components/image-editor-modal'
 
 interface TemplateImage {
   id: string
@@ -34,6 +35,7 @@ export default function TemplatesPage() {
   const [addToSetId, setAddToSetId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [editingImage, setEditingImage] = useState<{ id: string; imagePath: string } | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -191,6 +193,15 @@ export default function TemplatesPage() {
                   </button>
                   {isAdmin && (
                     <button
+                      onClick={() => setEditingImage({ id: img.id, imagePath: img.imagePath })}
+                      className="rounded-full bg-white p-2 shadow hover:bg-blue-50"
+                      title="Edit image"
+                    >
+                      <Crop size={14} className="text-blue-600" />
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
                       onClick={() => {
                         setRenamingId(img.id)
                         setRenameValue(img.name)
@@ -266,6 +277,14 @@ export default function TemplatesPage() {
             </div>
           )}
         </>
+      )}
+      {editingImage && (
+        <ImageEditorModal
+          imageId={editingImage.id}
+          imagePath={editingImage.imagePath}
+          onClose={() => setEditingImage(null)}
+          onSaved={() => { setEditingImage(null); fetchImages(page, search) }}
+        />
       )}
     </div>
   )
