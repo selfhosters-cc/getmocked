@@ -10,9 +10,12 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads'
 export async function GET(req: NextRequest) {
   try {
     await requireAuth()
-    const page = parseInt(req.nextUrl.searchParams.get('page') || '1')
-    const search = req.nextUrl.searchParams.get('search') || ''
-    const sort = req.nextUrl.searchParams.get('sort') || 'newest'
+    const params = new URL(req.url).searchParams
+    const page = parseInt(params.get('page') || '1')
+    const search = params.get('search') || ''
+    const sort = params.get('sort') || 'newest'
+    const tagsParam = params.get('tags') || ''
+    const tagNames = tagsParam ? tagsParam.split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : []
     const offset = (page - 1) * PAGE_SIZE
 
     const where: Record<string, unknown> = {
@@ -21,6 +24,11 @@ export async function GET(req: NextRequest) {
     }
     if (search) {
       where.name = { contains: search, mode: 'insensitive' }
+    }
+    if (tagNames.length > 0) {
+      where.AND = tagNames.map(name => ({
+        tags: { some: { tag: { name, archivedAt: null } } }
+      }))
     }
 
     const needsComputedSort = sort === 'most_sets'
@@ -38,6 +46,7 @@ export async function GET(req: NextRequest) {
       ...(needsComputedSort ? {} : { skip: offset, take: PAGE_SIZE }),
       include: {
         _count: { select: { templates: { where: { archivedAt: null } } } },
+        tags: { include: { tag: { select: { id: true, name: true } } } },
       },
     })
 
@@ -48,6 +57,7 @@ export async function GET(req: NextRequest) {
     let result = images.map((img) => ({
       ...img,
       setCount: img._count.templates,
+      tags: img.tags.map((t: any) => ({ id: t.tag.id, name: t.tag.name })),
     }))
 
     if (sort === 'most_sets') {

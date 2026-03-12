@@ -10,9 +10,22 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads'
 export async function GET(req: NextRequest) {
   try {
     const userId = await requireAuth()
-    const page = parseInt(req.nextUrl.searchParams.get('page') || '1')
-    const sort = req.nextUrl.searchParams.get('sort') || 'newest'
-    const where = { userId, archivedAt: null }
+    const params = new URL(req.url).searchParams
+    const page = parseInt(params.get('page') || '1')
+    const sort = params.get('sort') || 'newest'
+    const search = params.get('search') || ''
+    const tagsParam = params.get('tags') || ''
+    const tagNames = tagsParam ? tagsParam.split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : []
+
+    const where: Record<string, unknown> = { userId, archivedAt: null }
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' }
+    }
+    if (tagNames.length > 0) {
+      where.AND = tagNames.map(name => ({
+        tags: { some: { tag: { name, archivedAt: null } } }
+      }))
+    }
 
     // For computed sorts (renders, sets), fetch all IDs, sort, then paginate
     const needsComputedSort = ['most_renders', 'most_sets'].includes(sort)
@@ -33,6 +46,7 @@ export async function GET(req: NextRequest) {
         _count: {
           select: { templates: { where: { archivedAt: null } } },
         },
+        tags: { include: { tag: { select: { id: true, name: true } } } },
       },
     })
 
@@ -63,6 +77,7 @@ export async function GET(req: NextRequest) {
       setCount: img._count.templates,
       renderCount: renderCountByImage.get(img.id) || 0,
       templateLinks: templatesByImage.get(img.id) || [],
+      tags: img.tags.map((t: any) => ({ id: t.tag.id, name: t.tag.name })),
     }))
 
     // Apply computed sorts and paginate
