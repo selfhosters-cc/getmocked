@@ -78,7 +78,7 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     fetchImages(1, undefined, sort)
-    api.me().then((u) => { const admin = !!u.isAdmin; setIsAdmin(admin); isAdminRef.current = admin }).catch(() => {})
+    api.me().then((res) => { const admin = !!res.user?.isAdmin; setIsAdmin(admin); isAdminRef.current = admin }).catch(() => {})
     api.getSets().then(setSets)
   }, [fetchImages, sort])
 
