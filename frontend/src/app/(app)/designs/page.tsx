@@ -56,7 +56,7 @@ export default function DesignsPage() {
   }
 
   return (
-    <div {...dropProps} className="relative">
+    <div {...dropProps} className="relative min-h-[calc(100vh-6rem)]">
       {isDragging && (
         <div className="fixed inset-0 bg-blue-500/10 border-4 border-dashed border-blue-400 rounded-xl z-40 flex items-center justify-center pointer-events-none">
           <div className="bg-white rounded-xl px-8 py-6 shadow-lg text-center">
