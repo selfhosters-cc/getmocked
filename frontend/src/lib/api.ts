@@ -128,8 +128,8 @@ export const api = {
     request(`/api/mockup-sets/${setId}/templates/${templateId}/renders?page=${page}`),
 
   // Template Image Library
-  getTemplateImages: (page = 1, sort?: string) =>
-    request(`/api/template-images?page=${page}${sort ? `&sort=${sort}` : ''}`),
+  getTemplateImages: (page = 1, sort?: string, tags?: string[]) =>
+    request(`/api/template-images?page=${page}${sort ? `&sort=${sort}` : ''}${tags?.length ? `&tags=${tags.join(',')}` : ''}`),
   uploadTemplateImage: (file: File, name?: string) => {
     const form = new FormData()
     form.append('image', file)
@@ -149,8 +149,8 @@ export const api = {
     request(`/api/template-images/${id}/edit`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Site-wide Templates
-  getSiteTemplates: (page = 1, search?: string, sort?: string) =>
-    request(`/api/template-images/site?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}${sort ? `&sort=${sort}` : ''}`),
+  getSiteTemplates: (page = 1, search?: string, sort?: string, tags?: string[]) =>
+    request(`/api/template-images/site?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}${sort ? `&sort=${sort}` : ''}${tags?.length ? `&tags=${tags.join(',')}` : ''}`),
   uploadSiteTemplate: (file: File, name?: string) => {
     const form = new FormData()
     form.append('image', file)
@@ -172,6 +172,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ templateImageId, name }),
     }),
+
+  // Tags
+  getTags: (search?: string) =>
+    request(`/api/tags${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  getPopularTags: () => request('/api/tags/popular'),
+  updateTag: (id: string, data: { name?: string; archive?: boolean }) =>
+    request(`/api/tags/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  addTagToImage: (imageId: string, name: string) =>
+    request(`/api/template-images/${imageId}/tags`, { method: 'POST', body: JSON.stringify({ name }) }),
+  removeTagFromImage: (imageId: string, tagId: string) =>
+    request(`/api/template-images/${imageId}/tags/${tagId}`, { method: 'DELETE' }),
 
   // Dashboard
   getDashboard: () => request('/api/dashboard'),
