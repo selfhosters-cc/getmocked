@@ -8,13 +8,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const search = searchParams.get('search') || ''
 
-    const where: Record<string, unknown> = { archivedAt: null }
-    if (search) {
-      where.name = { contains: search.toLowerCase(), mode: 'insensitive' }
-    }
-
     const tags = await prisma.tag.findMany({
-      where,
+      where: {
+        archivedAt: null,
+        ...(search ? { name: { contains: search.toLowerCase(), mode: 'insensitive' as const } } : {}),
+      },
       include: { _count: { select: { images: true } } },
       orderBy: { name: 'asc' },
       take: 50,

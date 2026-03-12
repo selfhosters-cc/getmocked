@@ -55,13 +55,13 @@ export function TagFilter({ activeTags, onTagsChange }: TagFilterProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 flex-wrap">
-        <TagIcon size={14} className="text-gray-400 shrink-0" />
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <TagIcon size={14} className="text-gray-400 shrink-0 mr-0.5" />
         {popularTags.map((tag) => (
           <button
             key={tag.id}
             onClick={() => toggleTag(tag.name)}
-            className={`px-2.5 py-0.5 text-xs rounded-full border transition-colors ${
+            className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
               activeTags.includes(tag.name)
                 ? 'border-blue-600 bg-blue-50 text-blue-700'
                 : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
@@ -70,9 +70,9 @@ export function TagFilter({ activeTags, onTagsChange }: TagFilterProps) {
             {tag.name}
           </button>
         ))}
-        <div className="relative">
+        <div className="relative ml-1">
           <div className="relative">
-            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={11} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={searchInput}
@@ -84,7 +84,7 @@ export function TagFilter({ activeTags, onTagsChange }: TagFilterProps) {
                 if (e.key === 'Escape') { setShowSuggestions(false); setSearchInput('') }
               }}
               placeholder="Search tags..."
-              className="pl-6 pr-2 py-0.5 text-xs border rounded-full w-32 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="pl-5 pr-2 py-0.5 text-xs border border-gray-200 rounded-full w-28 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
             />
           </div>
           {showSuggestions && suggestions.length > 0 && (
