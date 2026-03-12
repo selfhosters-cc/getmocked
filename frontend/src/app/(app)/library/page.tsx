@@ -229,11 +229,11 @@ export default function LibraryPage() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {images.map((img) => (
-              <div key={img.id} className="group relative rounded-xl border bg-white overflow-hidden">
+              <div key={img.id} className="group relative rounded-xl border bg-white">
                 <img
                   src={getThumbnailUrl(img)}
                   alt={img.name}
-                  className="w-full aspect-square object-cover"
+                  className="w-full aspect-square object-cover rounded-t-xl"
                   loading="lazy"
                 />
                 <div className="p-2">
