@@ -187,6 +187,11 @@ export const api = {
   // Dashboard
   getDashboard: () => request('/api/dashboard'),
 
+  // Admin
+  getAdminSettings: () => request('/api/admin/settings'),
+  updateAdminSetting: (key: string, value: string) =>
+    request('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ key, value }) }),
+
   // Etsy Integration
   getEtsyConnections: () => request('/api/etsy/connections'),
   deleteEtsyConnection: (id: string) =>
