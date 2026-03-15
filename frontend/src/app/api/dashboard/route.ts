@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/server/prisma'
 import { requireAuth, handleAuthError } from '@/lib/server/auth'
+import { checkRenderLimit } from '@/lib/server/render-limit'
 
 export async function GET() {
   try {
     const userId = await requireAuth()
 
-    const [setsCount, designsCount, renderStats, recentBatches] = await Promise.all([
+    const [setsCount, designsCount, renderStats, recentBatches, renderUsage] = await Promise.all([
       prisma.mockupSet.count({ where: { userId } }),
       prisma.design.count({ where: { userId } }),
       prisma.renderedMockup.groupBy({
@@ -24,6 +25,7 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
         take: 4,
       }),
+      checkRenderLimit(userId),
     ])
 
     const totalRenders = renderStats.reduce((sum, r) => sum + r._count, 0)
@@ -53,6 +55,7 @@ export async function GET() {
         failedRenders,
       },
       recentBatches: recentPreviews,
+      renderUsage,
     })
   } catch (err) {
     return handleAuthError(err)
