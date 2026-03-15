@@ -26,13 +26,15 @@ interface BatchPreview {
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [recentBatches, setRecentBatches] = useState<BatchPreview[]>([])
+  const [renderUsage, setRenderUsage] = useState<{ used: number; limit: number } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.getDashboard()
-      .then((data: { stats: Stats; recentBatches: BatchPreview[] }) => {
+      .then((data: { stats: Stats; recentBatches: BatchPreview[]; renderUsage: { used: number; limit: number } }) => {
         setStats(data.stats)
         setRecentBatches(data.recentBatches)
+        setRenderUsage(data.renderUsage)
       })
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -115,6 +117,30 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
+        </div>
+      )}
+
+      {renderUsage && (
+        <div className="mb-8 rounded-xl border bg-white p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">Render Usage</span>
+            <span className="text-sm text-gray-500">{renderUsage.used} / {renderUsage.limit}</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full ${
+                renderUsage.used / renderUsage.limit > 0.9 ? 'bg-red-500' : 'bg-blue-600'
+              }`}
+              style={{ width: `${Math.min((renderUsage.used / renderUsage.limit) * 100, 100)}%` }}
+            />
+          </div>
+          {renderUsage.used / renderUsage.limit > 0.9 && (
+            <p className="text-xs text-red-500 mt-2">
+              {renderUsage.used >= renderUsage.limit
+                ? 'You have reached your render limit.'
+                : 'You are approaching your render limit.'}
+            </p>
+          )}
         </div>
       )}
 
