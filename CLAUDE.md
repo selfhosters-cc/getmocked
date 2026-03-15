@@ -69,6 +69,25 @@ Schema at `frontend/prisma/schema.prisma`.
 
 `User` → has many `MockupSet` → has many `MockupTemplate` (cascade delete)
 `User` → has many `Design`
+`User` → has many `EtsyConnection` (multiple Etsy shops per user)
 `MockupTemplate` + `Design` → produces `RenderedMockup` (cascade on template delete)
+`EtsyConnection` + `RenderedMockup` → produces `EtsyUpload` (tracks pushed images)
 
 The `overlayConfig` JSON on `MockupTemplate` stores: 4 corner points, displacement intensity, texture data, mode (advanced/basic).
+
+## Etsy Integration
+
+OAuth 2.0 with PKCE for Etsy Open API v3. Multi-shop support — users can connect multiple Etsy shops.
+
+**Environment variables required:**
+- `ETSY_API_KEY` — Etsy app API key (keystring)
+- `ETSY_REDIRECT_URI` — OAuth callback URL (e.g., `http://localhost:3335/api/etsy/callback`)
+
+**Key files:**
+- `frontend/src/lib/server/etsy.ts` — Etsy API client (auth, listings, image upload)
+- `frontend/src/lib/server/etsy-connection.ts` — Token refresh helper with auto-refresh and stale detection
+- `frontend/src/app/api/etsy/` — API routes (connect, callback, connections, listings, upload, uploads)
+- `frontend/src/components/send-to-shop-modal.tsx` — Multi-step upload modal (shop → listing → confirm → upload → results)
+- `frontend/src/app/(app)/connections/page.tsx` — Connection management page
+
+**Upload flow:** Frontend sends one image at a time via `POST /api/etsy/upload`, updating UI per-image for real-time progress. Pre-checks listing slot availability (max 10), detects duplicate uploads, continues past failures with retry support.
