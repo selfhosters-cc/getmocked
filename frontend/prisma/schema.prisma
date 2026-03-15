@@ -19,6 +19,7 @@ model User {
   designs       Design[]
   renderBatches RenderBatch[]
   templateImages TemplateImage[]
+  etsyConnections EtsyConnection[]
 
   @@map("users")
 }
@@ -132,6 +133,39 @@ model RenderedMockup {
   mockupTemplate    MockupTemplate @relation(fields: [mockupTemplateId], references: [id], onDelete: Cascade)
   design            Design         @relation(fields: [designId], references: [id])
   batch             RenderBatch?   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  etsyUploads       EtsyUpload[]
 
   @@map("rendered_mockups")
+}
+
+model EtsyConnection {
+  id              String         @id @default(uuid())
+  userId          String         @map("user_id")
+  shopId          String         @map("shop_id")
+  shopName        String         @map("shop_name")
+  etsyUserId      String         @map("etsy_user_id")
+  accessToken     String         @map("access_token")
+  refreshToken    String         @map("refresh_token")
+  tokenExpiresAt  DateTime       @map("token_expires_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  user            User           @relation(fields: [userId], references: [id])
+  uploads         EtsyUpload[]
+
+  @@map("etsy_connections")
+}
+
+model EtsyUpload {
+  id                String          @id @default(uuid())
+  etsyConnectionId  String          @map("etsy_connection_id")
+  renderedMockupId  String          @map("rendered_mockup_id")
+  etsyListingId     String          @map("etsy_listing_id")
+  etsyImageId       String?         @map("etsy_image_id")
+  status            String          @default("pending")
+  errorMessage      String?         @map("error_message")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  etsyConnection    EtsyConnection  @relation(fields: [etsyConnectionId], references: [id], onDelete: Cascade)
+  renderedMockup    RenderedMockup  @relation(fields: [renderedMockupId], references: [id])
+
+  @@map("etsy_uploads")
 }
