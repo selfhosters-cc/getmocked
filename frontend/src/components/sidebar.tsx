@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { LayoutDashboard, Layers, Palette, ImageDown, Heart, LogOut, Menu, X, Image, BookOpen, Plug } from 'lucide-react'
+import { LayoutDashboard, Layers, Palette, ImageDown, Heart, LogOut, Menu, X, Image, BookOpen, Plug, Settings } from 'lucide-react'
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,6 +14,10 @@ const nav = [
   { href: '/renders', label: 'Renders', icon: ImageDown },
   { href: '/favourites', label: 'Favourites', icon: Heart },
   { href: '/connections', label: 'Connections', icon: Plug },
+]
+
+const adminNav = [
+  { href: '/admin/settings', label: 'Admin Settings', icon: Settings },
 ]
 
 export function Sidebar() {
@@ -58,6 +62,22 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
+      {user?.isAdmin && (
+        <nav className="px-4 mt-2 pt-2 border-t border-gray-700">
+          {adminNav.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 mb-1 transition-colors ${
+                pathname.startsWith(href) ? 'bg-gray-700 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              }`}
+            >
+              <Icon size={20} />
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
       <div className="border-t border-gray-700 p-4">
         <div className="text-sm text-gray-400 mb-2 truncate">{user?.email}</div>
         <button onClick={logout} className="flex items-center gap-2 text-gray-400 hover:text-white text-sm">
