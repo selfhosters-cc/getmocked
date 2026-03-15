@@ -3,8 +3,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
-import { Loader2, Download, X, ChevronLeft, ChevronRight, ArrowLeft, Heart, RefreshCw } from 'lucide-react'
+import { Loader2, Download, X, ChevronLeft, ChevronRight, ArrowLeft, Heart, RefreshCw, Store, CheckSquare, Square } from 'lucide-react'
 import { RemixModal, RemixRender } from '@/components/remix-modal'
+import { SendToShopModal } from '@/components/send-to-shop-modal'
 
 interface OverlaySettings {
   displacementIntensity?: number
@@ -37,6 +38,8 @@ export default function BatchDetailPage() {
   const [editingDesc, setEditingDesc] = useState(false)
   const [descValue, setDescValue] = useState('')
   const [remixRender, setRemixRender] = useState<Render | null>(null)
+  const [selectedRenders, setSelectedRenders] = useState<Set<string>>(new Set())
+  const [showSendModal, setShowSendModal] = useState(false)
 
   useEffect(() => {
     api.getBatch(batchId).then((b) => { setBatch(b); setDescValue(b.description ?? '') }).catch(() => router.push('/renders')).finally(() => setLoading(false))
@@ -48,6 +51,30 @@ export default function BatchDetailPage() {
   }
 
   const completedRenders = batch?.renders.filter((r) => r.status === 'complete') ?? []
+
+  const toggleSelectRender = (id: string) => {
+    setSelectedRenders((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedRenders.size === completedRenders.length) {
+      setSelectedRenders(new Set())
+    } else {
+      setSelectedRenders(new Set(completedRenders.map((r) => r.id)))
+    }
+  }
+
+  const openSendModal = (renderIds?: string[]) => {
+    if (renderIds) {
+      setSelectedRenders(new Set(renderIds))
+    }
+    setShowSendModal(true)
+  }
 
   const saveDesc = async () => {
     setEditingDesc(false)
@@ -137,11 +164,24 @@ export default function BatchDetailPage() {
       </div>
 
       {completedRenders.length > 0 && (
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
           <a href={api.getZipUrl(batch.mockupSet.id, batch.design.id)}
             className="rounded-lg bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700 flex items-center gap-2 text-sm">
             <Download size={16} /> Download All ({completedRenders.length})
           </a>
+          <button
+            onClick={() => openSendModal(selectedRenders.size > 0 ? undefined : completedRenders.map((r) => r.id))}
+            className="rounded-lg bg-orange-500 px-4 py-2 text-white font-medium hover:bg-orange-600 flex items-center gap-2 text-sm"
+          >
+            <Store size={16} /> Send to Shop{selectedRenders.size > 0 ? ` (${selectedRenders.size})` : ''}
+          </button>
+          <button
+            onClick={toggleSelectAll}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
+          >
+            {selectedRenders.size === completedRenders.length ? <CheckSquare size={14} /> : <Square size={14} />}
+            {selectedRenders.size === completedRenders.length ? 'Deselect All' : 'Select All'}
+          </button>
           <span className="text-sm text-gray-400">Click any image to view full size. Use arrow keys to navigate.</span>
         </div>
       )}
@@ -166,6 +206,15 @@ export default function BatchDetailPage() {
                 </div>
               )}
               <div className="p-2 flex items-center justify-between">
+                {r.status === 'complete' && (
+                  <button
+                    onClick={() => toggleSelectRender(r.id)}
+                    className="shrink-0 p-1.5 rounded-full hover:bg-gray-100 text-gray-400 mr-1"
+                    title={selectedRenders.has(r.id) ? 'Deselect' : 'Select'}
+                  >
+                    {selectedRenders.has(r.id) ? <CheckSquare size={14} className="text-blue-600" /> : <Square size={14} />}
+                  </button>
+                )}
                 <div className="min-w-0">
                   <p className="text-sm truncate">{r.mockupTemplate?.name ?? 'Rendering...'}</p>
                   <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -186,8 +235,13 @@ export default function BatchDetailPage() {
                 </button>
                 {r.status === 'complete' && (
                   <>
+                    <button onClick={() => openSendModal([r.id])}
+                      className="shrink-0 ml-1 p-1.5 rounded-full hover:bg-orange-50 text-gray-500 hover:text-orange-600"
+                      title="Send to Shop">
+                      <Store size={14} />
+                    </button>
                     <a href={api.getDownloadUrl(r.id)} download
-                      className="shrink-0 ml-2 p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                      className="shrink-0 ml-1 p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
                       title="Download">
                       <Download size={14} />
                     </a>
@@ -269,6 +323,14 @@ export default function BatchDetailPage() {
           batchId={batch.id}
           onClose={() => setRemixRender(null)}
           onRendered={handleRemixRendered}
+        />
+      )}
+      {showSendModal && (
+        <SendToShopModal
+          renders={completedRenders
+            .filter((r) => selectedRenders.has(r.id))
+            .map((r) => ({ id: r.id, renderedImagePath: undefined, mockupTemplate: r.mockupTemplate ? { name: r.mockupTemplate.name } : undefined }))}
+          onClose={() => setShowSendModal(false)}
         />
       )}
     </div>
