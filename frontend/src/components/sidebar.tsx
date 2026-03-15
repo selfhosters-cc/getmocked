@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { LayoutDashboard, Layers, Palette, ImageDown, Heart, LogOut, Menu, X, Image, BookOpen } from 'lucide-react'
+import { LayoutDashboard, Layers, Palette, ImageDown, Heart, LogOut, Menu, X, Image, BookOpen, Plug } from 'lucide-react'
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -13,6 +13,7 @@ const nav = [
   { href: '/designs', label: 'My Designs', icon: Palette },
   { href: '/renders', label: 'Renders', icon: ImageDown },
   { href: '/favourites', label: 'Favourites', icon: Heart },
+  { href: '/connections', label: 'Connections', icon: Plug },
 ]
 
 export function Sidebar() {
