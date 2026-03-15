@@ -4,8 +4,8 @@ dist
 __pycache__
 *.pyc
 .env
-uploads/
-rendered/
+/uploads/
+/rendered/
 .venv/
 .local/
 .worktrees/
