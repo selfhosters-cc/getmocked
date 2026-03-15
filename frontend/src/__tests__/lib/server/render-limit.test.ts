@@ -25,6 +25,9 @@ describe('checkRenderLimit', () => {
 
     const result = await checkRenderLimit('user-1')
     expect(result).toEqual({ allowed: true, used: 100, limit: 500 })
+    expect(prisma.renderedMockup.count).toHaveBeenCalledWith({
+      where: { mockupTemplate: { mockupSet: { userId: 'user-1' } } },
+    })
   })
 
   it('returns allowed=false when at limit', async () => {

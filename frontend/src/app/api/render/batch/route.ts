@@ -7,13 +7,6 @@ import { checkRenderLimit } from '@/lib/server/render-limit'
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireAuth()
-    const renderLimit = await checkRenderLimit(userId)
-    if (!renderLimit.allowed) {
-      return NextResponse.json(
-        { error: 'Render limit reached', used: renderLimit.used, limit: renderLimit.limit },
-        { status: 403 }
-      )
-    }
     const { mockupSetId, designId, colorVariants, outputMode, outputColor, description } = await req.json()
 
     const set = await prisma.mockupSet.findFirst({
@@ -47,6 +40,14 @@ export async function POST(req: NextRequest) {
     // Create renders for each template × color combination
     const renderItems: { template: (typeof set.templates)[number]; tintColor: string | null }[] =
       set.templates.flatMap((template) => colors.map((tintColor) => ({ template, tintColor })))
+
+    const renderLimit = await checkRenderLimit(userId)
+    if (!renderLimit.allowed || renderLimit.used + renderItems.length > renderLimit.limit) {
+      return NextResponse.json(
+        { error: 'Render limit reached', used: renderLimit.used, limit: renderLimit.limit },
+        { status: 403 }
+      )
+    }
 
     const renders = await Promise.all(
       renderItems.map(({ template, tintColor }) => {
