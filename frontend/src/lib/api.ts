@@ -186,4 +186,20 @@ export const api = {
 
   // Dashboard
   getDashboard: () => request('/api/dashboard'),
+
+  // Etsy Integration
+  getEtsyConnections: () => request('/api/etsy/connections'),
+  deleteEtsyConnection: (id: string) =>
+    request(`/api/etsy/connections/${id}`, { method: 'DELETE' }),
+  getEtsyListings: (connectionId: string, page = 1, search?: string) =>
+    request(`/api/etsy/connections/${connectionId}/listings?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+  uploadToEtsy: (data: { etsyConnectionId: string; etsyListingId: string; renderedMockupId: string }) =>
+    request('/api/etsy/upload', { method: 'POST', body: JSON.stringify(data) }),
+  getEtsyUploads: (filters?: { renderedMockupId?: string; etsyConnectionId?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.renderedMockupId) params.set('renderedMockupId', filters.renderedMockupId)
+    if (filters?.etsyConnectionId) params.set('etsyConnectionId', filters.etsyConnectionId)
+    const qs = params.toString()
+    return request(`/api/etsy/uploads${qs ? `?${qs}` : ''}`)
+  },
 }
