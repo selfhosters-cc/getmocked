@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/server/prisma'
 import { requireAuth, handleAuthError } from '@/lib/server/auth'
 import { processRender } from '@/lib/server/process-render'
+import { checkRenderLimit } from '@/lib/server/render-limit'
 
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireAuth()
+    const renderLimit = await checkRenderLimit(userId)
+    if (!renderLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Render limit reached', used: renderLimit.used, limit: renderLimit.limit },
+        { status: 403 }
+      )
+    }
     const { mockupSetId, designId, colorVariants, outputMode, outputColor, description } = await req.json()
 
     const set = await prisma.mockupSet.findFirst({
