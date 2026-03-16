@@ -20,6 +20,7 @@ model User {
   renderBatches RenderBatch[]
   templateImages TemplateImage[]
   etsyConnections EtsyConnection[]
+  toolUsages      ToolUsage[]
 
   @@map("users")
 }
@@ -176,4 +177,14 @@ model SystemSetting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
+}
+
+model ToolUsage {
+  id        String   @id @default(uuid())
+  tool      String
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("tool_usage")
 }
