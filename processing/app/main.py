@@ -151,10 +151,20 @@ async def background_remove(
     else:
         result = _white_background_remove(img, threshold)
 
+    # Generate mask from the result's alpha channel
+    result_arr = np.array(result)
+    mask_data = result_arr[:, :, 3]
+    mask_img = Image.fromarray(mask_data, mode="L")
+
+    import base64
+    mask_buf = io.BytesIO()
+    mask_img.save(mask_buf, format="PNG")
+    mask_b64 = base64.b64encode(mask_buf.getvalue()).decode()
+
     buf = io.BytesIO()
     result.save(buf, format="PNG")
     buf.seek(0)
-    return StreamingResponse(buf, media_type="image/png")
+    return StreamingResponse(buf, media_type="image/png", headers={"X-Mask-Data": mask_b64})
 
 
 def _white_background_remove(img: Image.Image, threshold: int) -> Image.Image:
@@ -181,6 +191,49 @@ def _contour_background_remove(img: Image.Image, threshold: int) -> Image.Image:
     rgba = np.array(img.convert("RGBA"))
     rgba[:, :, 3] = mask_smooth
     return Image.fromarray(rgba)
+
+
+@app.post("/background-refine")
+async def background_refine(
+    image: UploadFile = File(...),
+    mask: UploadFile = File(...),
+    strokes: str = Form(...),  # JSON string: [{"points": [{"x": int, "y": int}, ...], "radius": int, "mode": "include"|"exclude"}, ...]
+):
+    """Refine a background removal mask with user brush strokes."""
+    import json
+    from app.mask import apply_mask_refinement
+
+    img_bytes = await image.read()
+    original = ImageOps.exif_transpose(Image.open(io.BytesIO(img_bytes)))
+
+    mask_bytes = await mask.read()
+    base_mask = Image.open(io.BytesIO(mask_bytes)).convert("L")
+
+    stroke_data = json.loads(strokes)
+
+    refined_mask = apply_mask_refinement(base_mask, stroke_data, original)
+
+    # Apply refined mask to original image
+    rgba = original.convert("RGBA")
+    rgba_arr = np.array(rgba)
+    mask_arr = np.array(refined_mask)
+    rgba_arr[:, :, 3] = mask_arr
+    result = Image.fromarray(rgba_arr)
+
+    # Return both the result image and the refined mask
+    import base64
+    mask_buf = io.BytesIO()
+    refined_mask.save(mask_buf, format="PNG")
+    mask_b64 = base64.b64encode(mask_buf.getvalue()).decode()
+
+    buf = io.BytesIO()
+    result.save(buf, format="PNG")
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="image/png",
+        headers={"X-Mask-Data": mask_b64},
+    )
 
 
 @app.post("/color-variants")

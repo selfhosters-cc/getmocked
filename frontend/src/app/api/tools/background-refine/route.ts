@@ -15,8 +15,11 @@ export async function POST(req: NextRequest) {
 
   const formData = await req.formData()
   const image = formData.get('image') as File | null
-  if (!image) {
-    return NextResponse.json({ error: 'Image required' }, { status: 400 })
+  const mask = formData.get('mask') as File | null
+  const strokes = formData.get('strokes') as string | null
+
+  if (!image || !mask || !strokes) {
+    return NextResponse.json({ error: 'Image, mask, and strokes required' }, { status: 400 })
   }
 
   const validationError = validateToolUpload(image)
@@ -24,10 +27,10 @@ export async function POST(req: NextRequest) {
 
   const proxyForm = new FormData()
   proxyForm.append('image', image)
-  proxyForm.append('threshold', (formData.get('threshold') as string) || '240')
-  proxyForm.append('mode', (formData.get('mode') as string) || 'white')
+  proxyForm.append('mask', mask)
+  proxyForm.append('strokes', strokes)
 
-  const res = await fetch(`${PROCESSING_URL}/background-remove`, {
+  const res = await fetch(`${PROCESSING_URL}/background-refine`, {
     method: 'POST',
     body: proxyForm,
   })
@@ -43,7 +46,7 @@ export async function POST(req: NextRequest) {
   const maskData = res.headers.get('X-Mask-Data')
 
   const response = new NextResponse(blob, {
-    headers: { 'Content-Type': res.headers.get('Content-Type') || 'image/png' },
+    headers: { 'Content-Type': 'image/png' },
   })
   if (maskData) {
     response.headers.set('X-Mask-Data', maskData)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Download, RotateCcw, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import ToolLayout from '@/components/tool-layout'
@@ -72,11 +72,25 @@ function BackgroundRemoverTool({ file, onReset }: { file: File; onReset: () => v
   const [processing, setProcessing] = useState(false)
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [maskBlob, setMaskBlob] = useState<Blob | null>(null)
+  const [brushMode, setBrushMode] = useState<'include' | 'exclude'>('include')
+  const [brushSize, setBrushSize] = useState(20)
+  const [painting, setPainting] = useState(false)
+  const [strokes, setStrokes] = useState<Array<{points: {x: number, y: number}[], radius: number, mode: string}>>([])
+  const [currentStroke, setCurrentStroke] = useState<{x: number, y: number}[]>([])
+  const [refining, setRefining] = useState(false)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
+  const imageRef = useRef<HTMLImageElement | null>(null)
+  const scaleRef = useRef(1)
 
   const handleRemove = async () => {
     setProcessing(true)
     setError(null)
     setResultUrl(null)
+    setMaskBlob(null)
+    setStrokes([])
+    setCurrentStroke([])
 
     try {
       const formData = new FormData()
@@ -98,6 +112,13 @@ function BackgroundRemoverTool({ file, onReset }: { file: File; onReset: () => v
       const blob = await res.blob()
       if (resultUrl) URL.revokeObjectURL(resultUrl)
       setResultUrl(URL.createObjectURL(blob))
+
+      const maskB64 = res.headers.get('X-Mask-Data')
+      if (maskB64) {
+        const maskBytes = Uint8Array.from(atob(maskB64), c => c.charCodeAt(0))
+        setMaskBlob(new Blob([maskBytes], { type: 'image/png' }))
+      }
+
       trackToolUsage('background-remove')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -121,8 +142,170 @@ function BackgroundRemoverTool({ file, onReset }: { file: File; onReset: () => v
     if (resultUrl) URL.revokeObjectURL(resultUrl)
     setResultUrl(null)
     setError(null)
+    setMaskBlob(null)
+    setStrokes([])
+    setCurrentStroke([])
     onReset()
   }
+
+  const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const scale = scaleRef.current
+    return {
+      x: Math.round((e.clientX - rect.left) / scale),
+      y: Math.round((e.clientY - rect.top) / scale),
+    }
+  }
+
+  const drawStrokePoint = useCallback((pt: {x: number, y: number}) => {
+    const ctx = overlayCanvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const scale = scaleRef.current
+    ctx.fillStyle = brushMode === 'include' ? 'rgba(0, 200, 0, 0.4)' : 'rgba(200, 0, 0, 0.4)'
+    ctx.beginPath()
+    ctx.arc(pt.x * scale, pt.y * scale, brushSize * scale, 0, Math.PI * 2)
+    ctx.fill()
+  }, [brushMode, brushSize])
+
+  const drawStrokeLine = useCallback((from: {x: number, y: number}, to: {x: number, y: number}) => {
+    const ctx = overlayCanvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const scale = scaleRef.current
+    ctx.strokeStyle = brushMode === 'include' ? 'rgba(0, 200, 0, 0.4)' : 'rgba(200, 0, 0, 0.4)'
+    ctx.lineWidth = brushSize * 2 * scale
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(from.x * scale, from.y * scale)
+    ctx.lineTo(to.x * scale, to.y * scale)
+    ctx.stroke()
+  }, [brushMode, brushSize])
+
+  const handlePaintStart = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pt = getCanvasCoords(e)
+    setCurrentStroke([pt])
+    setPainting(true)
+    drawStrokePoint(pt)
+  }
+
+  const handlePaintMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!painting) return
+    const pt = getCanvasCoords(e)
+    setCurrentStroke(prev => {
+      const lastPt = prev[prev.length - 1] || pt
+      drawStrokeLine(lastPt, pt)
+      return [...prev, pt]
+    })
+  }
+
+  const handlePaintEnd = () => {
+    if (!painting || currentStroke.length === 0) return
+    setPainting(false)
+    setStrokes(prev => [...prev, {
+      points: currentStroke,
+      radius: brushSize,
+      mode: brushMode,
+    }])
+    setCurrentStroke([])
+  }
+
+  const redrawOverlay = useCallback(() => {
+    const ctx = overlayCanvasRef.current?.getContext('2d')
+    if (!ctx) return
+    const canvas = overlayCanvasRef.current!
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const scale = scaleRef.current
+    for (const stroke of strokes) {
+      ctx.strokeStyle = stroke.mode === 'include' ? 'rgba(0, 200, 0, 0.4)' : 'rgba(200, 0, 0, 0.4)'
+      ctx.fillStyle = stroke.mode === 'include' ? 'rgba(0, 200, 0, 0.4)' : 'rgba(200, 0, 0, 0.4)'
+      ctx.lineWidth = stroke.radius * 2 * scale
+      ctx.lineCap = 'round'
+      if (stroke.points.length === 1) {
+        ctx.beginPath()
+        ctx.arc(stroke.points[0].x * scale, stroke.points[0].y * scale, stroke.radius * scale, 0, Math.PI * 2)
+        ctx.fill()
+      } else {
+        ctx.beginPath()
+        ctx.moveTo(stroke.points[0].x * scale, stroke.points[0].y * scale)
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x * scale, stroke.points[i].y * scale)
+        }
+        ctx.stroke()
+      }
+    }
+  }, [strokes])
+
+  const handleRefine = async () => {
+    if (!maskBlob || strokes.length === 0) return
+    setRefining(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      formData.append('mask', maskBlob, 'mask.png')
+      formData.append('strokes', JSON.stringify(strokes))
+
+      const res = await fetch('/api/tools/background-refine', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+
+      if (!res.ok) throw new Error('Refinement failed')
+
+      const blob = await res.blob()
+      if (resultUrl) URL.revokeObjectURL(resultUrl)
+      setResultUrl(URL.createObjectURL(blob))
+
+      const maskB64 = res.headers.get('X-Mask-Data')
+      if (maskB64) {
+        const maskBytes = Uint8Array.from(atob(maskB64), c => c.charCodeAt(0))
+        setMaskBlob(new Blob([maskBytes], { type: 'image/png' }))
+      }
+
+      setStrokes([])
+      setCurrentStroke([])
+      const ctx = overlayCanvasRef.current?.getContext('2d')
+      if (ctx && overlayCanvasRef.current) {
+        ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Refinement failed')
+    } finally {
+      setRefining(false)
+    }
+  }
+
+  // Draw result image on canvas when resultUrl changes
+  useEffect(() => {
+    if (!resultUrl || !canvasRef.current) return
+    const img = new window.Image()
+    img.onload = () => {
+      imageRef.current = img
+      const maxW = 600
+      const maxH = 450
+      const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight)
+      scaleRef.current = scale
+
+      const w = Math.round(img.naturalWidth * scale)
+      const h = Math.round(img.naturalHeight * scale)
+
+      canvasRef.current!.width = w
+      canvasRef.current!.height = h
+      overlayCanvasRef.current!.width = w
+      overlayCanvasRef.current!.height = h
+
+      const ctx = canvasRef.current!.getContext('2d')!
+      ctx.drawImage(img, 0, 0, w, h)
+
+      const octx = overlayCanvasRef.current!.getContext('2d')!
+      octx.clearRect(0, 0, w, h)
+    }
+    img.src = resultUrl
+  }, [resultUrl])
+
+  // Redraw overlay when strokes change (for undo)
+  useEffect(() => {
+    redrawOverlay()
+  }, [redrawOverlay])
 
   return (
     <div className="space-y-6">
@@ -192,20 +375,106 @@ function BackgroundRemoverTool({ file, onReset }: { file: File; onReset: () => v
         <p className="text-sm text-red-600 text-center">{error}</p>
       )}
 
-      {/* Result */}
+      {/* Result with paint-to-refine UI */}
       {resultUrl && (
         <div>
-          <h2 className="text-sm font-medium text-gray-700 mb-2">Result</h2>
+          <h2 className="text-sm font-medium text-gray-700 mb-2">
+            Result — paint to refine
+          </h2>
+
+          {/* Brush controls */}
+          <div className="flex items-center gap-4 mb-3">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBrushMode('include')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  brushMode === 'include'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Keep (Object)
+              </button>
+              <button
+                onClick={() => setBrushMode('exclude')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  brushMode === 'exclude'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Remove (Background)
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500">Brush:</label>
+              <input
+                type="range"
+                min={5}
+                max={50}
+                value={brushSize}
+                onChange={(e) => setBrushSize(Number(e.target.value))}
+                className="w-24 accent-blue-600"
+              />
+              <span className="text-xs text-gray-500 w-6">{brushSize}</span>
+            </div>
+          </div>
+
+          {/* Canvas container */}
           <div
-            className="rounded-lg p-4 flex items-center justify-center"
+            className="relative rounded-lg overflow-hidden inline-block"
             style={{
               backgroundImage: 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%)',
               backgroundSize: '20px 20px',
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={resultUrl} alt="Background removed" className="max-h-96 rounded" />
+            <canvas ref={canvasRef} />
+            <canvas
+              ref={overlayCanvasRef}
+              className="absolute top-0 left-0"
+              style={{ cursor: 'crosshair' }}
+              onMouseDown={handlePaintStart}
+              onMouseMove={handlePaintMove}
+              onMouseUp={handlePaintEnd}
+              onMouseLeave={handlePaintEnd}
+            />
           </div>
+
+          <p className="text-xs text-gray-400 mt-2">
+            Paint green to keep areas, red to remove. Then click &quot;Apply Refinement&quot;.
+          </p>
+        </div>
+      )}
+
+      {/* Refinement action buttons */}
+      {resultUrl && maskBlob && (
+        <div className="flex gap-2">
+          {strokes.length > 0 && (
+            <>
+              <button
+                onClick={() => {
+                  setStrokes(prev => prev.slice(0, -1))
+                }}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Undo
+              </button>
+              <button
+                onClick={handleRefine}
+                disabled={refining}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+              >
+                {refining ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Refining...
+                  </>
+                ) : (
+                  'Apply Refinement'
+                )}
+              </button>
+            </>
+          )}
         </div>
       )}
 
