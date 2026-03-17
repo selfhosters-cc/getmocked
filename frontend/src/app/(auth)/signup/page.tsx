@@ -24,7 +24,15 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
+      <div className="flex items-center justify-between p-4 max-w-md mx-auto pt-6">
+        <Link href="/" className="text-lg font-bold text-gray-900">Get Mocked</Link>
+        <div className="flex items-center gap-4">
+          <Link href="/tools" className="text-sm text-gray-600 hover:text-gray-900">Free Tools</Link>
+          <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">Sign In</Link>
+        </div>
+      </div>
+      <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 80px)' }}>
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
         <h1 className="mb-6 text-2xl font-bold text-center">Create your account</h1>
 
@@ -56,6 +64,7 @@ export default function SignupPage() {
         <p className="mt-4 text-center text-sm text-gray-500">
           Already have an account? <Link href="/login" className="text-blue-600 hover:underline">Sign in</Link>
         </p>
+      </div>
       </div>
     </div>
   )

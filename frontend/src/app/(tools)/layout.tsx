@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 import { Maximize, Crop, RefreshCw, Archive, Ruler, Eraser, Palette, Grid3X3, Stamp } from 'lucide-react'
 
 const tools = [
@@ -18,6 +19,7 @@ const tools = [
 
 export default function ToolsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { user } = useAuth()
   const isToolPage = pathname !== '/tools' && pathname.startsWith('/tools/')
 
   return (
@@ -31,15 +33,23 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
             <Link href="/tools" className="text-sm text-gray-600 hover:text-gray-900">
               Free Tools
             </Link>
-            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              Get Started Free
-            </Link>
+            {user ? (
+              <Link href="/dashboard" className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  Get Started Free
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
