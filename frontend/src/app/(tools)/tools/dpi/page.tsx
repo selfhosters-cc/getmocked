@@ -73,10 +73,6 @@ function DpiChecker({
   const heightMarginal = !heightSufficient && heightRatio >= 0.8
 
   const bothSufficient = widthSufficient && heightSufficient
-  const anyMarginal =
-    (!bothSufficient && (widthMarginal || heightMarginal)) &&
-    !(!widthSufficient && !widthMarginal) &&
-    !(!heightSufficient && !heightMarginal)
 
   // Overall status: green if both sufficient, yellow if marginal, red otherwise
   let statusColor: 'green' | 'yellow' | 'red' = 'red'

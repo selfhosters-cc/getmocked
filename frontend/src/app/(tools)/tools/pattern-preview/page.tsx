@@ -13,12 +13,12 @@ const faq = [
   { question: 'Can I adjust the tile size?', answer: 'Yes. Use the scale slider to make tiles larger or smaller, and adjust the grid size with columns and rows controls.' },
 ]
 
-type RepeatMode = 'straight' | 'half-drop' | 'half-brick' | 'mirror'
+type RepeatMode = 'straight' | 'half_drop' | 'half_brick' | 'mirror'
 
 const modes: { value: RepeatMode; label: string }[] = [
   { value: 'straight', label: 'Straight' },
-  { value: 'half-drop', label: 'Half-Drop' },
-  { value: 'half-brick', label: 'Half-Brick' },
+  { value: 'half_drop', label: 'Half-Drop' },
+  { value: 'half_brick', label: 'Half-Brick' },
   { value: 'mirror', label: 'Mirror' },
 ]
 

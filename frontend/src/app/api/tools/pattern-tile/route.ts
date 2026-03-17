@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/server/auth'
 import { prisma } from '@/lib/server/prisma'
+import { validateToolUpload } from '@/lib/server/validate-tool-upload'
 
 const PROCESSING_URL = process.env.PROCESSING_URL || 'http://processing:5000'
 
@@ -17,6 +18,9 @@ export async function POST(req: NextRequest) {
   if (!image) {
     return NextResponse.json({ error: 'Image required' }, { status: 400 })
   }
+
+  const validationError = validateToolUpload(image)
+  if (validationError) return validationError
 
   const proxyForm = new FormData()
   proxyForm.append('image', image)
@@ -35,7 +39,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error }, { status: res.status })
   }
 
-  await prisma.toolUsage.create({ data: { tool: 'pattern-preview', userId } })
+  await prisma.toolUsage.create({ data: { tool: 'pattern-tile', userId } })
 
   const blob = await res.blob()
   return new NextResponse(blob, {

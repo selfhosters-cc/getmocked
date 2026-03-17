@@ -132,11 +132,11 @@ function WatermarkTool({ files, onReset }: { files: File[]; onReset: () => void 
         if (tab === 'text') {
           formData.append('type', 'text')
           formData.append('text', text)
-          formData.append('fontSize', fontSize.toString())
+          formData.append('font_size', fontSize.toString())
           formData.append('color', color)
         } else {
           formData.append('type', 'image')
-          formData.append('watermarkImage', watermarkImage!)
+          formData.append('watermark_image', watermarkImage!)
         }
 
         const res = await fetch('/api/tools/watermark', {
