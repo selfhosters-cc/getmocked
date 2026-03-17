@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { Upload } from 'lucide-react'
 import Link from 'next/link'
 import { useFileDrop } from '@/hooks/use-file-drop'
+import { useAuth } from '@/lib/auth-context'
 
 interface ToolLayoutProps {
   title: string
@@ -28,6 +29,7 @@ export default function ToolLayout({
 }: ToolLayoutProps) {
   const [files, setFiles] = useState<File[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const { user } = useAuth()
 
   const onDrop = useCallback(
     (dropped: File[]) => {
@@ -81,18 +83,20 @@ export default function ToolLayout({
         children({ files, setFiles, clearFiles })
       )}
 
-      <div className="mt-12 bg-blue-50 rounded-xl p-6 text-center">
-        <p className="text-gray-700 mb-3">
-          Need product mockups? Create professional mockups for your e-commerce
-          listings.
-        </p>
-        <Link
-          href="/signup"
-          className="inline-block bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
-        >
-          Try Get Mocked Free
-        </Link>
-      </div>
+      {!user && (
+        <div className="mt-12 bg-blue-50 rounded-xl p-6 text-center">
+          <p className="text-gray-700 mb-3">
+            Need product mockups? Create professional mockups for your e-commerce
+            listings.
+          </p>
+          <Link
+            href="/signup"
+            className="inline-block bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
+            Try Get Mocked Free
+          </Link>
+        </div>
+      )}
 
       {faq && faq.length > 0 && (
         <div className="mt-12">
