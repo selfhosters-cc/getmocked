@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Download, RotateCcw, RefreshCw } from 'lucide-react'
 import JSZip from 'jszip'
 import ToolLayout from '@/components/tool-layout'
@@ -51,6 +51,23 @@ function getFormatLabel(type: string): string {
   if (type.includes('webp')) return 'WebP'
   if (type.includes('gif')) return 'GIF'
   return type.split('/')[1]?.toUpperCase() || 'Unknown'
+}
+
+function FileThumbnail({ file }: { file: File }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    const u = URL.createObjectURL(file)
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [file])
+  if (!url) return <div className="w-10 h-10 bg-gray-200 rounded mr-3 shrink-0" />
+  /* eslint-disable-next-line @next/next/no-img-element */
+  return <img src={url} alt={file.name} className="w-10 h-10 object-cover rounded mr-3 shrink-0" />
+}
+
+function ConvertedThumbnail({ url, name }: { url: string; name: string }) {
+  /* eslint-disable-next-line @next/next/no-img-element */
+  return <img src={url} alt={name} className="w-10 h-10 object-cover rounded mr-3 shrink-0" />
 }
 
 export default function ConvertPage() {
@@ -208,6 +225,7 @@ function Converter({
               key={i}
               className="flex items-center justify-between px-4 py-2 text-sm"
             >
+              <FileThumbnail file={file} />
               <span className="text-gray-900 truncate flex-1 mr-4">
                 {file.name}
               </span>
@@ -298,6 +316,7 @@ function Converter({
                 key={i}
                 className="flex items-center justify-between px-4 py-2 text-sm"
               >
+                <ConvertedThumbnail url={cf.url} name={cf.name} />
                 <div className="flex-1 mr-4">
                   <span className="text-gray-900 truncate block">
                     {cf.name}

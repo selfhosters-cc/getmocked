@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, RotateCcw } from 'lucide-react'
+import { Download, RotateCcw, ArrowLeft } from 'lucide-react'
 import ToolLayout from '@/components/tool-layout'
 import { trackToolUsage } from '@/lib/track-tool-usage'
 
@@ -17,6 +17,82 @@ const faq = [
   { question: 'How do I check my image DPI?', answer: 'Upload your image and enter the DPI it was created at (usually 72 for web, 300 for print). The tool calculates if it is sufficient for your target print size.' },
   { question: 'What happens when I resample?', answer: 'Resampling changes the pixel dimensions of your image. Upsampling (making bigger) may reduce sharpness. Downsampling (making smaller) is generally safe.' },
 ]
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function ZoomComparison({
+  originalUrl,
+  compressedUrl,
+  originalSize,
+  compressedSize,
+  originalLabel,
+  compressedLabel,
+}: {
+  originalUrl: string
+  compressedUrl: string
+  originalSize: number
+  compressedSize: number
+  originalLabel?: string
+  compressedLabel?: string
+}) {
+  const [zoom, setZoom] = useState(false)
+  const [zoomPos, setZoomPos] = useState({ x: 0.5, y: 0.5 })
+  const zoomLevel = 3
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setZoomPos({
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height,
+    })
+  }
+
+  const imageStyle = zoom
+    ? {
+        transform: `scale(${zoomLevel})`,
+        transformOrigin: `${zoomPos.x * 100}% ${zoomPos.y * 100}%`,
+        transition: 'transform-origin 0.1s ease-out',
+      }
+    : {}
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-4">
+        <div
+          className="bg-gray-100 rounded-lg p-2 text-center overflow-hidden cursor-zoom-in"
+          onMouseEnter={() => setZoom(true)}
+          onMouseLeave={() => setZoom(false)}
+          onMouseMove={handleMouseMove}
+        >
+          <p className="text-xs text-gray-500 mb-2">{originalLabel || 'Original'}</p>
+          <div className="overflow-hidden rounded">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={originalUrl} alt="Original" className="max-h-64 mx-auto" style={imageStyle} />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">{formatSize(originalSize)}</p>
+        </div>
+        <div
+          className="bg-gray-100 rounded-lg p-2 text-center overflow-hidden cursor-zoom-in"
+          onMouseEnter={() => setZoom(true)}
+          onMouseLeave={() => setZoom(false)}
+          onMouseMove={handleMouseMove}
+        >
+          <p className="text-xs text-gray-500 mb-2">{compressedLabel || 'Resampled'}</p>
+          <div className="overflow-hidden rounded">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={compressedUrl} alt="Resampled" className="max-h-64 mx-auto" style={imageStyle} />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">{formatSize(compressedSize)}</p>
+        </div>
+      </div>
+      <p className="text-xs text-gray-400 text-center mt-1">Hover to zoom and compare</p>
+    </div>
+  )
+}
 
 export default function DpiPage() {
   return (
@@ -47,6 +123,9 @@ function DpiChecker({
   const [printWidth, setPrintWidth] = useState(8)
   const [printHeight, setPrintHeight] = useState(10)
   const [resampling, setResampling] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [resampledUrl, setResampledUrl] = useState<string | null>(null)
+  const [resampledBlob, setResampledBlob] = useState<Blob | null>(null)
 
   // Load image
   useEffect(() => {
@@ -58,6 +137,13 @@ function DpiChecker({
       setImgHeight(img.naturalHeight)
     }
     img.src = url
+    return () => URL.revokeObjectURL(url)
+  }, [file])
+
+  // Create preview URL
+  useEffect(() => {
+    const url = URL.createObjectURL(file)
+    setPreviewUrl(url)
     return () => URL.revokeObjectURL(url)
   }, [file])
 
@@ -119,26 +205,76 @@ function DpiChecker({
       )
       if (!blob) return
 
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      const baseName = file.name.replace(/\.[^.]+$/, '')
-      a.download = `${baseName}-${requiredWidth}x${requiredHeight}.png`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // Clean up previous resampled URL
+      if (resampledUrl) URL.revokeObjectURL(resampledUrl)
 
-      trackToolUsage('dpi')
+      const url = URL.createObjectURL(blob)
+      setResampledUrl(url)
+      setResampledBlob(blob)
     } finally {
       setResampling(false)
     }
+  }
+
+  const handleDownloadResampled = () => {
+    if (!resampledUrl) return
+    const a = document.createElement('a')
+    a.href = resampledUrl
+    const baseName = file.name.replace(/\.[^.]+$/, '')
+    a.download = `${baseName}-${requiredWidth}x${requiredHeight}.png`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    trackToolUsage('dpi')
+  }
+
+  const handleBackFromResampled = () => {
+    if (resampledUrl) URL.revokeObjectURL(resampledUrl)
+    setResampledUrl(null)
+    setResampledBlob(null)
   }
 
   if (!image) {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
+  // Show resampled comparison view
+  if (resampledUrl && resampledBlob && previewUrl) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-sm font-medium text-gray-700">
+          Resampled Result: {requiredWidth}&times;{requiredHeight}px at {desiredDpi} DPI
+        </h2>
+
+        <ZoomComparison
+          originalUrl={previewUrl}
+          compressedUrl={resampledUrl}
+          originalSize={file.size}
+          compressedSize={resampledBlob.size}
+          originalLabel={`Original (${imgWidth}\u00d7${imgHeight})`}
+          compressedLabel={`Resampled (${requiredWidth}\u00d7${requiredHeight})`}
+        />
+
+        <div className="flex gap-3">
+          <button
+            onClick={handleBackFromResampled}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <button
+            onClick={handleDownloadResampled}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Download Resampled
+          </button>
+        </div>
       </div>
     )
   }
@@ -156,6 +292,14 @@ function DpiChecker({
           {currentPrintHeight.toFixed(1)}&quot;
         </p>
       </div>
+
+      {/* Image preview */}
+      {previewUrl && (
+        <div className="flex justify-center bg-gray-100 rounded-lg p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={previewUrl} alt="Uploaded image" className="max-h-48 rounded" />
+        </div>
+      )}
 
       {/* DPI inputs */}
       <div className="grid grid-cols-2 gap-4">

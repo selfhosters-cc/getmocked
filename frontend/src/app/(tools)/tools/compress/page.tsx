@@ -30,6 +30,76 @@ function percentSaved(original: number, compressed: number): string {
   return `${pct}%`
 }
 
+function ZoomComparison({
+  originalUrl,
+  compressedUrl,
+  originalSize,
+  compressedSize,
+  originalLabel,
+  compressedLabel,
+}: {
+  originalUrl: string
+  compressedUrl: string
+  originalSize: number
+  compressedSize: number
+  originalLabel?: string
+  compressedLabel?: string
+}) {
+  const [zoom, setZoom] = useState(false)
+  const [zoomPos, setZoomPos] = useState({ x: 0.5, y: 0.5 })
+  const zoomLevel = 3
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setZoomPos({
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height,
+    })
+  }
+
+  const imageStyle = zoom
+    ? {
+        transform: `scale(${zoomLevel})`,
+        transformOrigin: `${zoomPos.x * 100}% ${zoomPos.y * 100}%`,
+        transition: 'transform-origin 0.1s ease-out',
+      }
+    : {}
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-4">
+        <div
+          className="bg-gray-100 rounded-lg p-2 text-center overflow-hidden cursor-zoom-in"
+          onMouseEnter={() => setZoom(true)}
+          onMouseLeave={() => setZoom(false)}
+          onMouseMove={handleMouseMove}
+        >
+          <p className="text-xs text-gray-500 mb-2">{originalLabel || 'Original'}</p>
+          <div className="overflow-hidden rounded">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={originalUrl} alt="Original" className="max-h-64 mx-auto" style={imageStyle} />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">{formatSize(originalSize)}</p>
+        </div>
+        <div
+          className="bg-gray-100 rounded-lg p-2 text-center overflow-hidden cursor-zoom-in"
+          onMouseEnter={() => setZoom(true)}
+          onMouseLeave={() => setZoom(false)}
+          onMouseMove={handleMouseMove}
+        >
+          <p className="text-xs text-gray-500 mb-2">{compressedLabel || 'Compressed'}</p>
+          <div className="overflow-hidden rounded">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={compressedUrl} alt="Compressed" className="max-h-64 mx-auto" style={imageStyle} />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">{formatSize(compressedSize)}</p>
+        </div>
+      </div>
+      <p className="text-xs text-gray-400 text-center mt-1">Hover to zoom and compare</p>
+    </div>
+  )
+}
+
 export default function CompressPage() {
   return (
     <ToolLayout
@@ -216,32 +286,12 @@ function Compressor({
           <h2 className="text-sm font-medium text-gray-700 mb-2">
             Preview{files.length > 1 ? ` — ${files[selectedIndex].name}` : ''}
           </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-100 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-500 mb-2">Original</p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={originalPreviewUrl}
-                alt="Original"
-                className="max-h-64 mx-auto rounded"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                {formatSize(files[selectedIndex].size)}
-              </p>
-            </div>
-            <div className="bg-gray-100 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-500 mb-2">Compressed</p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={selectedCompressed.url}
-                alt="Compressed"
-                className="max-h-64 mx-auto rounded"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                {formatSize(selectedCompressed.blob.size)}
-              </p>
-            </div>
-          </div>
+          <ZoomComparison
+            originalUrl={originalPreviewUrl}
+            compressedUrl={selectedCompressed.url}
+            originalSize={files[selectedIndex].size}
+            compressedSize={selectedCompressed.blob.size}
+          />
           <p className="text-sm text-center text-gray-600 mt-2">
             {formatSize(files[selectedIndex].size)} &rarr;{' '}
             {formatSize(selectedCompressed.blob.size)} &middot;{' '}
