@@ -3,6 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { ensureThumbnail } from '@/lib/server/thumbnails'
 import { prisma } from '@/lib/server/prisma'
+import { getAuthUserId } from '@/lib/server/auth'
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads'
 
@@ -15,6 +16,11 @@ const MIME_TYPES: Record<string, string> = {
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const userId = await getAuthUserId()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const segments = (await params).path
   const relativePath = segments.join('/')
 

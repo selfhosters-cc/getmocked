@@ -17,17 +17,39 @@
       "Bash(DATABASE_URL=\"postgresql://getmocked:getmocked@192.168.5.3:5432/getmocked_dev\" npx prisma migrate resolve --applied 0001_init)",
       "Bash(chmod +x /code/mockzee2/scripts/*.sh)",
       "Bash(npm ls:*)",
+      "Bash(npm cat:*)",
       "Bash(npx tsc:*)",
       "Bash(ls /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/renders/)",
       "Bash(ls /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/renders/[batchId]/)",
       "Bash(python -c \"from app.transform import apply_perspective_transform; print\\(''OK''\\)\")",
-      "Bash(python3 -c \"import ast; ast.parse\\(open\\(''/code/mockzee2/processing/app/transform.py''\\).read\\(\\)\\); print\\(''OK''\\)\")"
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\(''/code/mockzee2/processing/app/transform.py''\\).read\\(\\)\\); print\\(''OK''\\)\")",
+      "Bash(cat /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/sets/[id]/page.tsx)",
+      "Bash(cat /code/mockzee2/frontend/src/app/api/mockup-sets/[id]/route.ts)",
+      "Bash(cat /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/sets/[id]/apply/page.tsx)",
+      "Bash(cat /code/mockzee2/frontend/src/app/api/render/batches/[batchId]/route.ts)",
+      "Bash(cat /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/renders/page.tsx)",
+      "Bash(cat /code/mockzee2/frontend/src/app/api/mockup-sets/[id]/templates/[templateId]/mask/route.ts)",
+      "Bash(cat /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/renders/[batchId]/page.tsx)",
+      "Bash(cat /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/sets/[id]/templates/[templateId]/edit/page.tsx)",
+      "Bash(cat /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/sets/page.tsx)",
+      "Bash(cat /code/mockzee2/frontend/src/app/api/mockup-sets/[id]/templates/[templateId]/route.ts)",
+      "Bash(cat /code/mockzee2/frontend/src/app/\\\\\\(app\\\\\\)/dashboard/page.tsx)",
+      "Bash(ls /code/mockzee2/frontend/src/app/api/render/[id]/)",
+      "Bash(ls /code/mockzee2/frontend/src/app/api/mockup-sets/[id]/templates/)",
+      "Bash(ls /code/mockzee2/frontend/src/app/api/mockup-sets/[id]/templates/[templateId]/)",
+      "Bash(mkdir -p /code/mockzee2/frontend/src/app/api/mockup-sets/[id]/templates/[templateId]/renders)",
+      "Bash(mkdir -p \"/code/mockzee2/frontend/src/app/\\(app\\)/sets/[id]/templates/[templateId]/renders\")",
+      "Bash(ls /code/mockzee2/frontend/.env*)",
+      "Bash(DATABASE_URL=\"postgresql://getmocked:getmocked@192.168.5.3:5432/getmocked_dev\" npx prisma migrate dev --name add_batch_desc_and_favorites)",
+      "Bash(DATABASE_URL=\"postgresql://getmocked:getmocked@192.168.5.3:5432/getmocked_dev\" npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --script)",
+      "Bash(DATABASE_URL=\"postgresql://getmocked:getmocked@192.168.5.3:5432/getmocked_dev\" npx prisma migrate resolve --applied 0003_add_batch_desc_and_favorites)"
     ],
     "additionalDirectories": [
       "/code/mockzee2/frontend/src/app/api/mockup-sets/[id]/templates",
       "/code/mockzee2/frontend/src/app/uploads",
       "/code/mockzee2/frontend/src/app/api/mockup-sets/[id]",
-      "/code/mockzee2/frontend/src/app/api/render/batches"
+      "/code/mockzee2/frontend/src/app/api/render/batches",
+      "/code/mockzee2/frontend/src/app/api/render/[id]"
     ]
   }
 }

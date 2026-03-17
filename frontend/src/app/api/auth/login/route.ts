@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { prisma } from '@/lib/server/prisma'
 import { comparePassword } from '@/lib/server/auth-utils'
 import { signToken } from '@/lib/server/jwt'
+import { tokenCookieOptions } from '@/lib/server/auth'
+import { isRateLimited } from '@/lib/server/rate-limit'
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -11,6 +13,11 @@ const loginSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    if (isRateLimited(ip)) {
+      return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+    }
+
     const body = await req.json()
     const { email, password } = loginSchema.parse(body)
 
@@ -26,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const token = signToken({ userId: user.id })
     const res = NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } })
-    res.cookies.set('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 })
+    res.cookies.set('token', token, tokenCookieOptions())
     return res
   } catch (err) {
     if (err instanceof z.ZodError) {

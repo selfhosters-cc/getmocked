@@ -39,6 +39,15 @@ export class AuthError extends Error {
   }
 }
 
+export function tokenCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60,
+  }
+}
+
 export function handleAuthError(err: unknown): NextResponse {
   if (err instanceof AuthError) {
     return NextResponse.json({ error: err.message }, { status: 401 })

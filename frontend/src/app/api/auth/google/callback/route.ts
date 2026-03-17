@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/server/prisma'
 import { signToken } from '@/lib/server/jwt'
+import { tokenCookieOptions } from '@/lib/server/auth'
 
 function getOrigin(req: NextRequest): string {
   const forwardedHost = req.headers.get('x-forwarded-host')
@@ -73,7 +74,7 @@ export async function GET(req: NextRequest) {
 
     const token = signToken({ userId: user.id })
     const res = NextResponse.redirect(`${origin}/dashboard`)
-    res.cookies.set('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 })
+    res.cookies.set('token', token, tokenCookieOptions())
     return res
   } catch (err) {
     console.error('Google OAuth error:', err)

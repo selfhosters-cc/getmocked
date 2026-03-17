@@ -15,6 +15,19 @@ from app.texture import detect_texture
 
 app = FastAPI(title="Get Mocked - Image Processing")
 
+ALLOWED_DIRS = [
+    os.path.abspath(os.environ.get("UPLOAD_DIR", "/app/uploads")),
+    os.path.abspath(os.environ.get("RENDER_DIR", "/app/rendered")),
+]
+
+
+def validate_path(file_path: str, allow_write: bool = False) -> str:
+    """Validate that a file path is within allowed directories."""
+    abs_path = os.path.abspath(file_path)
+    if not any(abs_path.startswith(d + os.sep) or abs_path == d for d in ALLOWED_DIRS):
+        raise HTTPException(status_code=403, detail="Path outside allowed directories")
+    return abs_path
+
 
 class Corner(BaseModel):
     x: float
@@ -41,6 +54,9 @@ def health():
 
 @app.post("/render")
 def render(req: RenderRequest):
+    validate_path(req.templateImagePath)
+    validate_path(req.designImagePath)
+    validate_path(req.outputDir, allow_write=True)
     template = ImageOps.exif_transpose(Image.open(req.templateImagePath))
     design = ImageOps.exif_transpose(Image.open(req.designImagePath))
 
@@ -52,6 +68,8 @@ def render(req: RenderRequest):
     texture_data = req.overlayConfig.get("textureData")
     tint_color = req.overlayConfig.get("tintColor")
     mask_path = req.overlayConfig.get("maskPath")
+    if mask_path:
+        validate_path(mask_path)
     output_mode = req.overlayConfig.get("outputMode", "original")
     output_color = req.overlayConfig.get("outputColor")
     print(f"[render] displacement={displacement}, transparency={transparency}, "
@@ -88,6 +106,7 @@ class MaskRefineRequest(BaseModel):
 
 @app.post("/detect-mask")
 def detect_mask_endpoint(req: MaskDetectRequest):
+    validate_path(req.imagePath)
     from app.mask import detect_product_mask
     image = ImageOps.exif_transpose(Image.open(req.imagePath))
     mask = detect_product_mask(image)
@@ -97,14 +116,18 @@ def detect_mask_endpoint(req: MaskDetectRequest):
 
 @app.post("/refine-mask")
 def refine_mask_endpoint(req: MaskRefineRequest):
+    validate_path(req.imagePath)
+    validate_path(req.maskPath)
     from app.mask import apply_mask_refinement
     base_mask = Image.open(req.maskPath).convert("L")
-    refined = apply_mask_refinement(base_mask, req.strokes)
+    original_image = ImageOps.exif_transpose(Image.open(req.imagePath))
+    refined = apply_mask_refinement(base_mask, req.strokes, original_image)
     refined.save(req.maskPath, "PNG")
     return {"maskPath": req.maskPath}
 
 @app.post("/detect-texture")
 def detect_texture_endpoint(req: TextureDetectRequest):
+    validate_path(req.imagePath)
     image = ImageOps.exif_transpose(Image.open(req.imagePath))
     corners = [{"x": c.x, "y": c.y} for c in req.corners]
     result = detect_texture(image, corners)

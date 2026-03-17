@@ -4,6 +4,7 @@ dist
 __pycache__
 *.pyc
 .env
+.env.production
 /uploads/
 /rendered/
 .venv/

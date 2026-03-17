@@ -25,7 +25,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image file required' }, { status: 400 })
     }
 
-    const imagePath = await saveUpload(file, `designs/${userId}`)
+    let imagePath: string
+    try {
+      imagePath = await saveUpload(file, `designs/${userId}`)
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message }, { status: 400 })
+    }
     const design = await prisma.design.create({
       data: {
         userId,

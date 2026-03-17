@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/server/prisma'
-import { requireAuth, handleAuthError } from '@/lib/server/auth'
+import { requireAuth, requireAdmin, handleAuthError } from '@/lib/server/auth'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -20,6 +20,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     })
     if (!image) {
       return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+    }
+    // Only admins can tag site-wide (public) templates
+    if (image.userId === null) {
+      await requireAdmin()
     }
 
     const tag = await prisma.tag.upsert({

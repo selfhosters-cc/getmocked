@@ -196,7 +196,7 @@ export async function uploadListingImage(
   filename: string,
 ): Promise<UploadResult> {
   const formData = new FormData()
-  formData.append('image', new Blob([imageBuffer]), filename)
+  formData.append('image', new Blob([new Uint8Array(imageBuffer)]), filename)
 
   const res = await fetch(
     `${ETSY_API_BASE}/application/shops/${shopId}/listings/${listingId}/images`,

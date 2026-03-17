@@ -9,9 +9,18 @@ export async function PATCH(_req: NextRequest, { params }: { params: Promise<{ i
 
     const render = await prisma.renderedMockup.findFirst({
       where: { id },
-      include: { batch: { select: { userId: true } } },
+      include: {
+        batch: { select: { userId: true } },
+        mockupTemplate: { select: { mockupSet: { select: { userId: true } } } },
+      },
     })
-    if (!render || render.batch?.userId !== userId) {
+    if (!render) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    // Verify ownership through batch or template chain
+    const ownerViaTemplate = render.mockupTemplate?.mockupSet?.userId
+    const ownerViaBatch = render.batch?.userId
+    if (ownerViaBatch !== userId && ownerViaTemplate !== userId) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 

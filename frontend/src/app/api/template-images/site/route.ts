@@ -83,7 +83,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image file required' }, { status: 400 })
     }
 
-    const imagePath = await saveUpload(file, 'templates/site')
+    let imagePath: string
+    try {
+      imagePath = await saveUpload(file, 'templates/site')
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message }, { status: 400 })
+    }
     let thumbnailPath: string | null = null
     try {
       thumbnailPath = await generateThumbnail(UPLOAD_DIR, imagePath)
