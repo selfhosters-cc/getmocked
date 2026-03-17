@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Download, RotateCcw, Loader2, Upload } from 'lucide-react'
 import Link from 'next/link'
 import JSZip from 'jszip'
@@ -93,6 +93,29 @@ export default function WatermarkPage() {
   )
 }
 
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '')
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+}
+
+function getPositionXY(
+  canvasW: number, canvasH: number, wmW: number, wmH: number, pos: Position
+): [number, number] {
+  const m = 10
+  const positions: Record<string, [number, number]> = {
+    'top-left': [m, m],
+    'top-center': [(canvasW - wmW) / 2, m],
+    'top-right': [canvasW - wmW - m, m],
+    'center-left': [m, (canvasH - wmH) / 2],
+    'center': [(canvasW - wmW) / 2, (canvasH - wmH) / 2],
+    'center-right': [canvasW - wmW - m, (canvasH - wmH) / 2],
+    'bottom-left': [m, canvasH - wmH - m],
+    'bottom-center': [(canvasW - wmW) / 2, canvasH - wmH - m],
+    'bottom-right': [canvasW - wmW - m, canvasH - wmH - m],
+  }
+  return positions[pos] || positions['center']
+}
+
 function WatermarkTool({ files, onReset }: { files: File[]; onReset: () => void }) {
   const [tab, setTab] = useState<'text' | 'image'>('text')
   const [text, setText] = useState('')
@@ -106,6 +129,97 @@ function WatermarkTool({ files, onReset }: { files: File[]; onReset: () => void 
   const [results, setResults] = useState<{ name: string; blob: Blob; url: string }[]>([])
   const [error, setError] = useState<string | null>(null)
   const watermarkInputRef = useRef<HTMLInputElement>(null)
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null)
+  const [previewImage, setPreviewImage] = useState<HTMLImageElement | null>(null)
+  const [wmImg, setWmImg] = useState<HTMLImageElement | null>(null)
+
+  // Load the first file as preview image
+  useEffect(() => {
+    if (!files[0]) return
+    const url = URL.createObjectURL(files[0])
+    const img = new window.Image()
+    img.onload = () => setPreviewImage(img)
+    img.src = url
+    return () => URL.revokeObjectURL(url)
+  }, [files])
+
+  // Load watermark image when selected
+  useEffect(() => {
+    if (!watermarkImage) { setWmImg(null); return }
+    const url = URL.createObjectURL(watermarkImage)
+    const img = new window.Image()
+    img.onload = () => setWmImg(img)
+    img.src = url
+    return () => URL.revokeObjectURL(url)
+  }, [watermarkImage])
+
+  // Draw preview
+  useEffect(() => {
+    if (!previewImage || !previewCanvasRef.current) return
+    const canvas = previewCanvasRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const maxW = 500
+    const maxH = 375
+    const scale = Math.min(1, maxW / previewImage.naturalWidth, maxH / previewImage.naturalHeight)
+    const w = Math.round(previewImage.naturalWidth * scale)
+    const h = Math.round(previewImage.naturalHeight * scale)
+    canvas.width = w
+    canvas.height = h
+
+    // Draw base image
+    ctx.drawImage(previewImage, 0, 0, w, h)
+
+    const alpha = opacity / 100
+
+    if (tab === 'text' && text.trim()) {
+      const scaledFontSize = Math.round(fontSize * scale)
+      const [r, g, b] = hexToRgb(color)
+      ctx.font = `${scaledFontSize}px sans-serif`
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`
+      ctx.textBaseline = 'top'
+
+      const metrics = ctx.measureText(text)
+      const textW = metrics.width
+      const textH = scaledFontSize
+
+      if (position === 'tiled') {
+        for (let ty = 0; ty < h; ty += textH + 40) {
+          for (let tx = 0; tx < w; tx += textW + 40) {
+            ctx.fillText(text, tx, ty)
+          }
+        }
+      } else {
+        const [tx, ty] = getPositionXY(w, h, textW, textH, position)
+        ctx.fillText(text, tx, ty)
+      }
+    } else if (tab === 'image' && wmImg) {
+      // Scale watermark to max 30% of canvas width
+      const maxWmW = w * 0.3
+      let wmW = wmImg.naturalWidth * scale
+      let wmH = wmImg.naturalHeight * scale
+      if (wmW > maxWmW) {
+        const ratio = maxWmW / wmW
+        wmW = maxWmW
+        wmH = wmH * ratio
+      }
+
+      ctx.globalAlpha = alpha
+
+      if (position === 'tiled') {
+        for (let ty = 0; ty < h; ty += wmH + 30) {
+          for (let tx = 0; tx < w; tx += wmW + 30) {
+            ctx.drawImage(wmImg, tx, ty, wmW, wmH)
+          }
+        }
+      } else {
+        const [px, py] = getPositionXY(w, h, wmW, wmH, position)
+        ctx.drawImage(wmImg, px, py, wmW, wmH)
+      }
+      ctx.globalAlpha = 1
+    }
+  }, [previewImage, wmImg, tab, text, fontSize, color, opacity, position])
 
   const handleApply = useCallback(async () => {
     if (tab === 'text' && !text.trim()) return
@@ -359,6 +473,19 @@ function WatermarkTool({ files, onReset }: { files: File[]; onReset: () => void 
           </button>
         </div>
       </div>
+
+      {/* Live preview */}
+      {previewImage && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
+          <div className="bg-gray-100 rounded-lg p-3 flex justify-center">
+            <canvas ref={previewCanvasRef} className="rounded shadow max-w-full" />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            Preview of first image. Adjust settings above — preview updates live.
+          </p>
+        </div>
+      )}
 
       {/* File count */}
       <p className="text-sm text-gray-500">
