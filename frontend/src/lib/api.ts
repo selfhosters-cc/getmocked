@@ -189,6 +189,7 @@ export const api = {
 
   // Admin
   getAdminSettings: () => request('/api/admin/settings'),
+  getAdminToolUsage: () => request('/api/admin/tool-usage'),
   updateAdminSetting: (key: string, value: string) =>
     request('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ key, value }) }),
 
