@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Download, RotateCcw, Loader2, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 import JSZip from 'jszip'
@@ -9,9 +9,9 @@ import { useAuth } from '@/lib/auth-context'
 import { trackToolUsage } from '@/lib/track-tool-usage'
 
 const faq = [
-  { question: 'How does color generation work?', answer: 'The tool converts your product photo to grayscale (preserving shadows and detail) then multiplies by each target color, creating realistic color variants.' },
-  { question: 'How many colors can I generate?', answer: 'Up to 20 color variants at once. Add colors using the color picker or by entering hex codes.' },
-  { question: 'What format are the results?', answer: 'A ZIP file containing PNG images, one per color variant.' },
+  { question: 'How does colour generation work?', answer: 'The tool converts your product photo to grayscale (preserving shadows and detail) then multiplies by each target colour, creating realistic colour variants.' },
+  { question: 'How many colours can I generate?', answer: 'Up to 20 colour variants at once. Add colours using the colour picker or by entering hex codes.' },
+  { question: 'What format are the results?', answer: 'A ZIP file containing PNG images, one per colour variant.' },
 ]
 
 export default function ColorVariantsPage() {
@@ -20,8 +20,8 @@ export default function ColorVariantsPage() {
   if (!user && !loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Color Variant Generator</h1>
-        <p className="text-gray-600 mb-8">Generate product color variants from a single photo. Create multiple colorways instantly for your e-commerce listings.</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Colour Variant Generator</h1>
+        <p className="text-gray-600 mb-8">Generate product colour variants from a single photo. Create multiple colourways instantly for your e-commerce listings.</p>
         <div className="bg-blue-50 rounded-xl p-8 text-center">
           <h2 className="text-xl font-bold text-gray-900 mb-3">Free Account Required</h2>
           <p className="text-gray-600 mb-4">Sign up for a free account to use this tool. No credit card required.</p>
@@ -56,8 +56,8 @@ export default function ColorVariantsPage() {
 
   return (
     <ToolLayout
-      title="Color Variant Generator"
-      description="Generate product color variants from a single photo. Add colors and download all variants as a ZIP."
+      title="Colour Variant Generator"
+      description="Generate product colour variants from a single photo. Add colours and download all variants as a ZIP."
       faq={faq}
     >
       {({ files, clearFiles }) => (
@@ -75,6 +75,13 @@ function ColorVariantsTool({ file, onReset }: { file: File; onReset: () => void 
   const [error, setError] = useState<string | null>(null)
   const [previewUrls, setPreviewUrls] = useState<{ name: string; url: string }[]>([])
   const [zipBlob, setZipBlob] = useState<Blob | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const url = URL.createObjectURL(file)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
 
   const addColor = () => {
     const hex = hexInput.startsWith('#') ? hexInput : `#${hexInput}`
@@ -157,9 +164,21 @@ function ColorVariantsTool({ file, onReset }: { file: File; onReset: () => void 
 
   return (
     <div className="space-y-6">
-      {/* Color picker */}
+      {/* Image preview */}
+      {previewUrl && (
+        <div className="bg-gray-100 rounded-lg p-4 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={previewUrl} alt="Uploaded image" className="max-h-48 rounded" />
+        </div>
+      )}
+
+      <p className="text-sm text-gray-500">
+        Pick colours below and click &quot;Generate Variants&quot; to create tinted versions of this image.
+      </p>
+
+      {/* Colour picker */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Add Colors</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Add Colours</label>
         <div className="flex gap-2 items-center">
           <input
             type="color"
@@ -183,16 +202,16 @@ function ColorVariantsTool({ file, onReset }: { file: File; onReset: () => void 
             className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Add Color
+            Add Colour
           </button>
         </div>
       </div>
 
-      {/* Color list */}
+      {/* Colour list */}
       {colors.length > 0 && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Colors ({colors.length}/20)
+            Colours ({colors.length}/20)
           </label>
           <div className="flex flex-wrap gap-2">
             {colors.map((color, i) => (
