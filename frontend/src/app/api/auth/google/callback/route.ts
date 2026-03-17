@@ -73,7 +73,10 @@ export async function GET(req: NextRequest) {
     }
 
     const token = signToken({ userId: user.id })
-    const res = NextResponse.redirect(`${origin}/dashboard`)
+    const redirectPath = req.nextUrl.searchParams.get('state') || '/dashboard'
+    // Ensure redirect is a relative path to prevent open redirect
+    const safePath = redirectPath.startsWith('/') ? redirectPath : '/dashboard'
+    const res = NextResponse.redirect(`${origin}${safePath}`)
     res.cookies.set('token', token, tokenCookieOptions())
     return res
   } catch (err) {

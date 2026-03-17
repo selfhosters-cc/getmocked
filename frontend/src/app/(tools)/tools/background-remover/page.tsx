@@ -24,7 +24,7 @@ export default function BackgroundRemoverPage() {
         <div className="bg-blue-50 rounded-xl p-8 text-center">
           <h2 className="text-xl font-bold text-gray-900 mb-3">Free Account Required</h2>
           <p className="text-gray-600 mb-4">Sign up for a free account to use this tool. No credit card required.</p>
-          <Link href="/signup" className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium">
+          <Link href="/signup?redirect=%2Ftools%2Fbackground-remover" className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium">
             Sign Up Free
           </Link>
         </div>

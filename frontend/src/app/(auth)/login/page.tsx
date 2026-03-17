@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 
 export default function LoginPage() {
@@ -10,13 +10,15 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const { login } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') || '/dashboard'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     try {
       await login(email, password)
-      router.push('/dashboard')
+      router.push(redirect)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
     }
@@ -36,7 +38,7 @@ export default function LoginPage() {
         <h1 className="mb-6 text-2xl font-bold text-center">Sign in to Get Mocked</h1>
 
         <a
-          href="/api/auth/google"
+          href={`/api/auth/google${redirect !== '/dashboard' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 font-medium hover:bg-gray-50 mb-4"
         >
           Sign in with Google
@@ -59,7 +61,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-500">
-          Don&apos;t have an account? <Link href="/signup" className="text-blue-600 hover:underline">Sign up</Link>
+          Don&apos;t have an account? <Link href={`/signup${redirect !== '/dashboard' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-blue-600 hover:underline">Sign up</Link>
         </p>
       </div>
       </div>

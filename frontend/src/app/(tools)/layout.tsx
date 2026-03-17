@@ -39,11 +39,11 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
               </Link>
             ) : (
               <>
-                <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
+                <Link href={`/login?redirect=${encodeURIComponent(pathname)}`} className="text-sm text-gray-600 hover:text-gray-900">
                   Sign In
                 </Link>
                 <Link
-                  href="/signup"
+                  href={`/signup?redirect=${encodeURIComponent(pathname)}`}
                   className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
                 >
                   Get Started Free

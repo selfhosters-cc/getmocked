@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
       ? `${forwardedProto}://${req.headers.get('host')}`
       : req.nextUrl.origin
 
+  const redirectAfterLogin = req.nextUrl.searchParams.get('redirect') || '/dashboard'
+
   const callbackUrl = process.env.GOOGLE_CALLBACK_URL || `${origin}/api/auth/google/callback`
   const params = new URLSearchParams({
     client_id: clientId,
@@ -22,6 +24,7 @@ export async function GET(req: NextRequest) {
     scope: 'openid email profile',
     access_type: 'offline',
     prompt: 'consent',
+    state: redirectAfterLogin,
   })
 
   return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
