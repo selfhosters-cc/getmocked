@@ -14,6 +14,7 @@ model User {
   passwordHash String?      @map("password_hash")
   authProvider String       @default("email") @map("auth_provider")
   isAdmin      Boolean      @default(false) @map("is_admin")
+  renderCountOffset Int     @default(0) @map("render_count_offset")
   createdAt    DateTime     @default(now()) @map("created_at")
   mockupSets    MockupSet[]
   designs       Design[]

@@ -190,6 +190,9 @@ export const api = {
   // Admin
   getAdminSettings: () => request('/api/admin/settings'),
   getAdminToolUsage: () => request('/api/admin/tool-usage'),
+  getAdminUsers: () => request('/api/admin/users'),
+  resetUserRenders: (userId: string) =>
+    request(`/api/admin/users/${userId}/reset-renders`, { method: 'POST' }),
   updateAdminSetting: (key: string, value: string) =>
     request('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ key, value }) }),
 

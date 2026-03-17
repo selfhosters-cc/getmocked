@@ -23,7 +23,7 @@ export default function AdminSettingsPage() {
     api.getAdminSettings()
       .then((data: { settings: SystemSetting[] }) => {
         const rl = data.settings.find(s => s.key === 'render_limit')
-        if (rl) setRenderLimit(rl.value)
+        setRenderLimit(rl ? rl.value : '500')
       })
       .catch((err: Error) => {
         if (err.message.includes('Not authorized') || err.message.includes('Not authenticated')) {

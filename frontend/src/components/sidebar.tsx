@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { LayoutDashboard, Layers, Palette, ImageDown, Heart, LogOut, Menu, X, Image, BookOpen, Plug, Settings, Wand2, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, Layers, Palette, ImageDown, Heart, LogOut, Menu, X, Image, BookOpen, Plug, Settings, Wand2, BarChart3, Users } from 'lucide-react'
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -20,6 +20,7 @@ const nav = [
 const adminNav = [
   { href: '/admin/settings', label: 'Admin Settings', icon: Settings },
   { href: '/admin/tool-usage', label: 'Tool Usage', icon: BarChart3 },
+  { href: '/admin/users', label: 'Users', icon: Users },
 ]
 
 export function Sidebar() {
