@@ -366,7 +366,7 @@ function WatermarkTool({ files, onReset }: { files: File[]; onReset: () => void 
             <input
               type="range"
               min={12}
-              max={72}
+              max={200}
               value={fontSize}
               onChange={(e) => setFontSize(Number(e.target.value))}
               className="w-full accent-blue-600"
