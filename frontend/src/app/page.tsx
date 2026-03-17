@@ -36,6 +36,14 @@ export default async function LandingPage() {
             Sign In
           </Link>
         </div>
+        <div className="mt-4">
+          <Link
+            href="/tools"
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Browse Free Tools →
+          </Link>
+        </div>
       </div>
 
       {/* Features */}
